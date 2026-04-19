@@ -1,0 +1,2485 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ArcSLA · Arc Testnet</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Geist:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.4/dist/ethers.umd.min.js"></script>
+    <style>
+      :root {
+        --bg-0: #07090b;
+        --bg-1: #0c1014;
+        --bg-2: #11161c;
+        --bg-3: #171e26;
+        --border: #1e2732;
+        --border-hi: #2b3644;
+        --text: #e6ebf1;
+        --text-dim: #8b96a5;
+        --text-faint: #566370;
+        --accent: #5fe3b8;
+        --accent-dim: #2c8a6f;
+        --accent-bg: rgba(95, 227, 184, 0.08);
+        --danger: #ff6b6b;
+        --danger-bg: rgba(255, 107, 107, 0.08);
+        --warn: #ffb95f;
+        --warn-bg: rgba(255, 185, 95, 0.08);
+        --info: #68a9ff;
+        --info-bg: rgba(104, 169, 255, 0.08);
+        --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "Menlo", monospace;
+        --font-sans: "Geist", ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg-0);
+        color: var(--text);
+        font-family: var(--font-sans);
+        font-size: 14px;
+        line-height: 1.5;
+        font-feature-settings: "ss01", "cv11";
+        min-height: 100vh;
+      }
+
+      body {
+        background-image:
+          radial-gradient(
+            ellipse 1200px 600px at 20% -10%,
+            rgba(95, 227, 184, 0.06),
+            transparent 50%
+          ),
+          radial-gradient(
+            ellipse 900px 500px at 110% 20%,
+            rgba(104, 169, 255, 0.04),
+            transparent 50%
+          );
+        background-attachment: fixed;
+      }
+
+      button,
+      input,
+      select,
+      textarea {
+        font-family: inherit;
+        font-size: inherit;
+        color: inherit;
+      }
+
+      .mono {
+        font-family: var(--font-mono);
+      }
+
+      /* ---- Top bar ---- */
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+        backdrop-filter: blur(12px);
+        background: rgba(7, 9, 11, 0.85);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .topbar-inner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 28px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand-mark {
+        width: 28px;
+        height: 28px;
+        border-radius: 6px;
+        background: linear-gradient(135deg, var(--accent) 0%, #3fa788 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 14px;
+        color: #04120d;
+      }
+
+      .brand-title {
+        font-weight: 500;
+        letter-spacing: -0.01em;
+      }
+
+      .brand-sub {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-faint);
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      .network-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text-dim);
+      }
+
+      .net-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--text-faint);
+      }
+
+      .net-dot.ok {
+        background: var(--accent);
+        box-shadow: 0 0 8px var(--accent);
+      }
+
+      .net-dot.warn {
+        background: var(--warn);
+      }
+
+      .wallet-box {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .usdc-balance {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        padding: 6px 12px;
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+      }
+
+      .usdc-balance .amount {
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      .usdc-balance .label {
+        color: var(--text-faint);
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 0.06em;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border: 1px solid var(--border);
+        background: var(--bg-2);
+        color: var(--text);
+        border-radius: 4px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.12s ease;
+        font-size: 13px;
+      }
+
+      .btn:hover:not(:disabled) {
+        background: var(--bg-3);
+        border-color: var(--border-hi);
+      }
+
+      .btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      .btn-primary {
+        background: var(--accent);
+        color: #04120d;
+        border-color: var(--accent);
+        font-weight: 600;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        background: #4dd4a7;
+        border-color: #4dd4a7;
+      }
+
+      .btn-danger {
+        background: transparent;
+        color: var(--danger);
+        border-color: rgba(255, 107, 107, 0.3);
+      }
+
+      .btn-danger:hover:not(:disabled) {
+        background: var(--danger-bg);
+      }
+
+      .btn-sm {
+        padding: 5px 10px;
+        font-size: 12px;
+      }
+
+      .addr-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      .addr-pill:hover {
+        border-color: var(--border-hi);
+      }
+
+      /* ---- Layout ---- */
+      .grid {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 28px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      @media (max-width: 1100px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* ---- Panel (card) ---- */
+      .panel {
+        background: var(--bg-1);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+
+      .panel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .panel-head h2 {
+        margin: 0;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+
+      .panel-body {
+        padding: 18px;
+      }
+
+      .panel-body.compact {
+        padding: 0;
+      }
+
+      /* ---- Collapsible section ---- */
+      details.action {
+        border-bottom: 1px solid var(--border);
+      }
+
+      details.action:last-child {
+        border-bottom: none;
+      }
+
+      details.action > summary {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 18px;
+        cursor: pointer;
+        list-style: none;
+        user-select: none;
+        font-weight: 500;
+      }
+
+      details.action > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.action > summary::after {
+        content: "+";
+        font-family: var(--font-mono);
+        color: var(--text-dim);
+        transition: transform 0.2s ease;
+      }
+
+      details.action[open] > summary::after {
+        content: "−";
+      }
+
+      details.action > summary:hover {
+        background: var(--bg-2);
+      }
+
+      .action-body {
+        padding: 0 18px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      /* ---- Form fields ---- */
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .field label {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-faint);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .field input,
+      .field textarea {
+        background: var(--bg-0);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 10px 12px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+        color: var(--text);
+        outline: none;
+        transition: border-color 0.12s ease;
+      }
+
+      .field input:focus,
+      .field textarea:focus {
+        border-color: var(--accent-dim);
+      }
+
+      .field .hint {
+        font-size: 11px;
+        color: var(--text-faint);
+      }
+
+      .field-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      /* ---- Provider info / call table ---- */
+      .kv {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 8px 14px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+      }
+
+      .kv dt {
+        color: var(--text-faint);
+      }
+
+      .kv dd {
+        margin: 0;
+        color: var(--text);
+        overflow-wrap: anywhere;
+      }
+
+      /* ---- Network stats bar ---- */
+      .stats-bar {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1px;
+        background: var(--border);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        overflow: hidden;
+        margin-bottom: 20px;
+      }
+
+      @media (max-width: 700px) {
+        .stats-bar {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      .stat-cell {
+        background: var(--bg-1);
+        padding: 16px 18px;
+      }
+
+      .stat-cell .stat-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-bottom: 6px;
+      }
+
+      .stat-cell .stat-value {
+        font-family: var(--font-mono);
+        font-size: 20px;
+        font-weight: 600;
+        color: var(--text);
+        line-height: 1;
+      }
+
+      .stat-cell .stat-value.accent {
+        color: var(--accent);
+      }
+
+      .stat-cell .stat-value.danger {
+        color: var(--danger);
+      }
+
+      .stat-cell .stat-sub {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-faint);
+        margin-top: 4px;
+      }
+
+      /* ---- Provider list table ---- */
+      .provider-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--font-mono);
+        font-size: 12px;
+      }
+
+      .provider-table thead th {
+        text-align: left;
+        padding: 10px 14px;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        font-weight: 500;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-2);
+      }
+
+      .provider-table tbody td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        vertical-align: middle;
+      }
+
+      .provider-table tbody tr {
+        cursor: pointer;
+        transition: background 0.12s ease;
+      }
+
+      .provider-table tbody tr:hover {
+        background: var(--bg-2);
+      }
+
+      .provider-table tbody tr.is-self {
+        background: rgba(95, 227, 184, 0.04);
+      }
+
+      .provider-table tbody tr.is-self:hover {
+        background: rgba(95, 227, 184, 0.08);
+      }
+
+      .provider-table .col-id {
+        color: var(--text-faint);
+        width: 50px;
+      }
+
+      .provider-table .col-owner {
+        color: var(--text);
+      }
+
+      .provider-table .col-price,
+      .provider-table .col-stake {
+        color: var(--accent);
+        text-align: right;
+        width: 88px;
+      }
+
+      .provider-table .col-sla {
+        color: var(--text-dim);
+        text-align: right;
+        width: 72px;
+      }
+
+      .provider-table .col-status {
+        text-align: right;
+        width: 70px;
+      }
+
+      .provider-table .badge {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .provider-table .badge.active {
+        background: var(--accent-bg);
+        color: var(--accent);
+      }
+
+      .provider-table .badge.inactive {
+        background: rgba(148, 163, 184, 0.1);
+        color: var(--text-faint);
+      }
+
+      .self-tag {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 1px 6px;
+        border-radius: 3px;
+        background: var(--accent-bg);
+        color: var(--accent);
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+
+      /* ---- Modal ---- */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(7, 9, 11, 0.7);
+        backdrop-filter: blur(4px);
+        z-index: 200;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      .modal {
+        background: var(--bg-1);
+        border: 1px solid var(--border-hi);
+        border-radius: 8px;
+        max-width: 680px;
+        width: 100%;
+        max-height: 86vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        animation: modal-in 0.14s ease;
+      }
+
+      @keyframes modal-in {
+        from {
+          opacity: 0;
+          transform: translateY(8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .modal-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .modal-head h2 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 500;
+      }
+
+      .modal-close {
+        background: transparent;
+        border: none;
+        color: var(--text-dim);
+        font-size: 20px;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+      }
+
+      .modal-close:hover {
+        background: var(--bg-3);
+        color: var(--text);
+      }
+
+      .modal-body {
+        padding: 20px;
+        overflow-y: auto;
+      }
+
+      .modal-body .section-title {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin: 20px 0 10px;
+      }
+
+      .modal-body .section-title:first-child {
+        margin-top: 0;
+      }
+
+      .provider-metrics {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .metric-cell {
+        padding: 12px 14px;
+        background: var(--bg-2);
+        border-radius: 4px;
+        border: 1px solid var(--border);
+      }
+
+      .metric-cell .metric-label {
+        font-family: var(--font-mono);
+        font-size: 9px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-bottom: 4px;
+      }
+
+      .metric-cell .metric-value {
+        font-family: var(--font-mono);
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 1;
+      }
+
+      .metric-cell .metric-value.accent {
+        color: var(--accent);
+      }
+
+      .metric-cell .metric-value.danger {
+        color: var(--danger);
+      }
+
+      .metric-cell .metric-sub {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-faint);
+        margin-top: 3px;
+      }
+
+      /* reputation meter */
+      .rep-meter {
+        height: 4px;
+        background: var(--bg-3);
+        border-radius: 2px;
+        overflow: hidden;
+        margin-top: 8px;
+      }
+
+      .rep-fill {
+        height: 100%;
+        background: var(--accent);
+        transition: width 0.3s ease;
+      }
+
+      .rep-fill.low {
+        background: var(--warn);
+      }
+
+      .rep-fill.crit {
+        background: var(--danger);
+      }
+
+      /* call list in modal */
+      .mini-call {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 12px;
+        padding: 10px 12px;
+        background: var(--bg-2);
+        border-radius: 4px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        margin-bottom: 6px;
+        align-items: center;
+      }
+
+      .mini-call .call-hash {
+        color: var(--text);
+      }
+
+      .mini-call .call-time {
+        color: var(--text-faint);
+        font-size: 11px;
+        margin-left: 8px;
+      }
+
+      .mini-call .call-amount {
+        color: var(--text-dim);
+      }
+
+      .empty-state {
+        padding: 32px 18px;
+        text-align: center;
+        color: var(--text-faint);
+        font-size: 12px;
+        font-family: var(--font-mono);
+      }
+
+      .call-row {
+        padding: 12px 18px;
+        border-bottom: 1px solid var(--border);
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        gap: 12px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+      }
+
+      .call-row:last-child {
+        border-bottom: none;
+      }
+
+      .call-row .head-line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .call-row .sub-line {
+        color: var(--text-faint);
+        font-size: 11px;
+        margin-top: 2px;
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .status-pending {
+        background: var(--warn);
+        box-shadow: 0 0 6px var(--warn);
+      }
+
+      .status-completed {
+        background: var(--accent);
+      }
+
+      .status-slashed {
+        background: var(--danger);
+      }
+
+      .countdown {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--warn);
+      }
+
+      .countdown.expired {
+        color: var(--danger);
+      }
+
+      /* ---- Event feed ---- */
+      .feed {
+        max-height: 420px;
+        overflow-y: auto;
+      }
+
+      .feed::-webkit-scrollbar {
+        width: 8px;
+      }
+
+      .feed::-webkit-scrollbar-track {
+        background: var(--bg-1);
+      }
+
+      .feed::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 4px;
+      }
+
+      .feed-row {
+        display: grid;
+        grid-template-columns: auto auto 1fr auto;
+        gap: 14px;
+        padding: 10px 18px;
+        border-bottom: 1px solid var(--border);
+        font-family: var(--font-mono);
+        font-size: 11px;
+        align-items: baseline;
+      }
+
+      .feed-row:last-child {
+        border-bottom: none;
+      }
+
+      .feed-time {
+        color: var(--text-faint);
+        white-space: nowrap;
+      }
+
+      .feed-tag {
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .feed-tag.started {
+        background: var(--info-bg);
+        color: var(--info);
+      }
+
+      .feed-tag.submitted {
+        background: var(--accent-bg);
+        color: var(--accent);
+      }
+
+      .feed-tag.slashed {
+        background: var(--danger-bg);
+        color: var(--danger);
+      }
+
+      .feed-tag.registered {
+        background: rgba(148, 163, 184, 0.1);
+        color: #94a3b8;
+      }
+
+      .feed-body {
+        color: var(--text-dim);
+        overflow-wrap: anywhere;
+      }
+
+      .feed-body .hi {
+        color: var(--text);
+      }
+
+      .feed-link {
+        color: var(--text-faint);
+        text-decoration: none;
+      }
+
+      .feed-link:hover {
+        color: var(--accent);
+      }
+
+      /* ---- Toasts ---- */
+      .toasts {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 100;
+        max-width: 420px;
+      }
+
+      .toast {
+        background: var(--bg-2);
+        border: 1px solid var(--border-hi);
+        border-radius: 6px;
+        padding: 12px 16px;
+        font-size: 13px;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        animation: slide-in 0.18s ease;
+      }
+
+      @keyframes slide-in {
+        from {
+          opacity: 0;
+          transform: translateX(12px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .toast.ok {
+        border-left: 3px solid var(--accent);
+      }
+
+      .toast.err {
+        border-left: 3px solid var(--danger);
+      }
+
+      .toast.info {
+        border-left: 3px solid var(--info);
+      }
+
+      .toast-body .title {
+        font-weight: 500;
+        color: var(--text);
+        margin-bottom: 2px;
+      }
+
+      .toast-body .detail {
+        color: var(--text-dim);
+        font-size: 12px;
+        font-family: var(--font-mono);
+        overflow-wrap: anywhere;
+      }
+
+      .toast-body .detail a {
+        color: var(--accent);
+      }
+
+      .spinner {
+        width: 12px;
+        height: 12px;
+        border: 1.5px solid var(--text-faint);
+        border-top-color: transparent;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        display: inline-block;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* ---- Disconnected overlay ---- */
+      .disconnected {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 20px;
+        text-align: center;
+      }
+
+      .disconnected h1 {
+        font-size: 32px;
+        font-weight: 500;
+        letter-spacing: -0.02em;
+        margin: 0 0 12px;
+      }
+
+      .disconnected p {
+        color: var(--text-dim);
+        max-width: 480px;
+        margin: 0 0 28px;
+        line-height: 1.6;
+      }
+
+      .hero-stat-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+        max-width: 720px;
+        width: 100%;
+        margin-top: 48px;
+      }
+
+      .hero-stat {
+        padding: 18px;
+        background: var(--bg-1);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+
+      .hero-stat .num {
+        font-family: var(--font-mono);
+        font-size: 22px;
+        font-weight: 600;
+        color: var(--accent);
+        margin-bottom: 4px;
+      }
+
+      .hero-stat .lbl {
+        font-size: 11px;
+        color: var(--text-faint);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+
+      .contract-addresses {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-top: 40px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+      }
+
+      .contract-addresses a {
+        color: var(--text-faint);
+        text-decoration: none;
+      }
+
+      .contract-addresses a:hover {
+        color: var(--accent);
+      }
+
+      .contract-addresses .label {
+        color: var(--text-faint);
+        margin-right: 10px;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      @media (max-width: 1100px) {
+        .split {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      .full-width {
+        grid-column: 1 / -1;
+      }
+
+      .inline-code {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--accent);
+        background: var(--accent-bg);
+        padding: 1px 6px;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- ============================================================ -->
+    <!-- Top bar                                                      -->
+    <!-- ============================================================ -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="brand-mark">A</div>
+          <div>
+            <div class="brand-title">ArcSLA</div>
+            <div class="brand-sub">on-chain SLA marketplace · arc testnet</div>
+          </div>
+        </div>
+        <div class="wallet-box">
+          <div class="network-pill" id="netPill">
+            <span class="net-dot" id="netDot"></span>
+            <span id="netLabel">Disconnected</span>
+          </div>
+          <div class="usdc-balance hidden" id="balanceBox">
+            <span class="label">USDC</span>
+            <span class="amount" id="usdcBal">0.00</span>
+          </div>
+          <button class="btn btn-primary" id="connectBtn">Connect wallet</button>
+          <div class="addr-pill hidden" id="addrPill" title="Click to copy">
+            <span id="addrText"></span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- ============================================================ -->
+    <!-- Disconnected view                                            -->
+    <!-- ============================================================ -->
+    <main id="disconnectedView">
+      <div class="disconnected">
+        <h1>Pay-per-call, enforced on-chain.</h1>
+        <p>
+          Service providers stake USDC and commit to an SLA. Callers — including AI agents — pay
+          per request and receive a cryptographically signed receipt. If the provider misses the
+          deadline, the stake is slashed automatically. No arbiter, no middleman.
+        </p>
+        <button class="btn btn-primary" id="connectBtn2">Connect wallet</button>
+
+        <div class="hero-stat-row">
+          <div class="hero-stat">
+            <div class="num mono" id="heroProviders">—</div>
+            <div class="lbl">Registered providers</div>
+          </div>
+          <div class="hero-stat">
+            <div class="num mono" id="heroCalls">—</div>
+            <div class="lbl">Calls on chain</div>
+          </div>
+          <div class="hero-stat">
+            <div class="num mono" id="heroSlashes">—</div>
+            <div class="lbl">Slashes enforced</div>
+          </div>
+        </div>
+
+        <div class="contract-addresses">
+          <div>
+            <span class="label">ServiceRegistry</span>
+            <a id="registryLink" target="_blank" rel="noreferrer"></a>
+          </div>
+          <div>
+            <span class="label">PayPerCall</span>
+            <a id="payPerCallLink" target="_blank" rel="noreferrer"></a>
+          </div>
+          <div>
+            <span class="label">USDC</span>
+            <a id="usdcLink" target="_blank" rel="noreferrer"></a>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ============================================================ -->
+    <!-- Connected view                                               -->
+    <!-- ============================================================ -->
+    <main id="connectedView" class="hidden">
+      <div style="max-width: 1400px; margin: 0 auto; padding: 28px 28px 0;">
+        <div class="stats-bar">
+          <div class="stat-cell">
+            <div class="stat-label">Providers</div>
+            <div class="stat-value accent mono" id="statProviders">—</div>
+            <div class="stat-sub" id="statProvidersSub">registered</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">Calls</div>
+            <div class="stat-value mono" id="statCalls">—</div>
+            <div class="stat-sub" id="statCallsSub">on chain</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">Receipts</div>
+            <div class="stat-value accent mono" id="statReceipts">—</div>
+            <div class="stat-sub" id="statReceiptsSub">SLA honored</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">Slashed</div>
+            <div class="stat-value danger mono" id="statSlashed">—</div>
+            <div class="stat-sub" id="statSlashedSub">USDC redirected</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- Left: Actions -->
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Actions</h2>
+          </div>
+          <div class="panel-body compact">
+            <details class="action" id="actionRegister">
+              <summary>Register as provider</summary>
+              <div class="action-body">
+                <div class="field">
+                  <label>Signer address</label>
+                  <input type="text" id="regSigner" placeholder="0x… (defaults to your address)" />
+                  <div class="hint">
+                    The address that will sign receipts. For testing, leave blank — your own
+                    address is used.
+                  </div>
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label>Stake (USDC)</label>
+                    <input type="text" id="regStake" placeholder="10" />
+                  </div>
+                  <div class="field">
+                    <label>Price per call (USDC)</label>
+                    <input type="text" id="regPrice" placeholder="1" />
+                  </div>
+                </div>
+                <div class="field-row">
+                  <div class="field">
+                    <label>Max response (sec)</label>
+                    <input type="text" id="regMaxResp" placeholder="30" />
+                  </div>
+                  <div class="field">
+                    <label>Slash %</label>
+                    <input type="text" id="regSlashPct" placeholder="20" />
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Endpoint</label>
+                  <input type="text" id="regEndpoint" placeholder="https://api.example.com" />
+                </div>
+                <button class="btn btn-primary" id="btnRegister">Stake & register</button>
+              </div>
+            </details>
+
+            <details class="action" id="actionCall" open>
+              <summary>Call a service</summary>
+              <div class="action-body">
+                <div class="field">
+                  <label>Provider ID</label>
+                  <input type="text" id="callProviderId" placeholder="1" />
+                  <div class="hint" id="callProviderHint">
+                    Enter a provider id to fetch SLA terms.
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Request payload</label>
+                  <textarea id="callPayload" rows="2" placeholder="any string — will be hashed on-chain">ping</textarea>
+                </div>
+                <button class="btn btn-primary" id="btnCall">Approve & call</button>
+              </div>
+            </details>
+
+            <details class="action" id="actionReceipt">
+              <summary>Submit receipt (provider)</summary>
+              <div class="action-body">
+                <div class="field">
+                  <label>Call ID (bytes32)</label>
+                  <input type="text" id="rcpCallId" placeholder="0x…" />
+                </div>
+                <div class="field">
+                  <label>Response payload</label>
+                  <textarea id="rcpPayload" rows="2" placeholder="your service's response">pong</textarea>
+                  <div class="hint">
+                    Response is hashed and signed with EIP-191. On-chain stores only the hash.
+                  </div>
+                </div>
+                <button class="btn btn-primary" id="btnReceipt">Sign & submit</button>
+              </div>
+            </details>
+
+            <details class="action" id="actionTimeout">
+              <summary>Claim timeout (caller)</summary>
+              <div class="action-body">
+                <div class="field">
+                  <label>Call ID (bytes32)</label>
+                  <input type="text" id="toCallId" placeholder="0x…" />
+                  <div class="hint">
+                    Only works after the SLA deadline has passed. Refunds your payment and slashes
+                    the provider's stake.
+                  </div>
+                </div>
+                <button class="btn btn-danger" id="btnTimeout">Claim timeout</button>
+              </div>
+            </details>
+          </div>
+        </section>
+
+        <!-- Right: Live state -->
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Your provider</h2>
+            <button class="btn btn-sm" id="btnRefreshProvider">Refresh</button>
+          </div>
+          <div class="panel-body" id="providerBox">
+            <div class="empty-state">not registered — use the left panel to stake</div>
+          </div>
+        </section>
+
+        <section class="panel full-width">
+          <div class="panel-head">
+            <h2>Your calls</h2>
+            <span class="mono" style="font-size: 11px; color: var(--text-faint)" id="callsSummary"
+              ></span>
+          </div>
+          <div class="panel-body compact" id="callsBox">
+            <div class="empty-state">no calls yet — make one or submit a receipt</div>
+          </div>
+        </section>
+
+        <section class="panel full-width">
+          <div class="panel-head">
+            <h2>All providers</h2>
+            <span class="mono" style="font-size: 11px; color: var(--text-faint)">
+              click a row for details
+            </span>
+          </div>
+          <div class="panel-body compact" id="allProvidersBox">
+            <div class="empty-state">loading providers…</div>
+          </div>
+        </section>
+
+        <section class="panel full-width">
+          <div class="panel-head">
+            <h2>Live event feed</h2>
+            <span class="mono" style="font-size: 11px; color: var(--text-faint)">
+              streaming from arc testnet · real-time
+            </span>
+          </div>
+          <div class="panel-body compact">
+            <div class="feed" id="feed">
+              <div class="empty-state">listening for contract events…</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div class="toasts" id="toasts"></div>
+
+    <!-- Provider detail modal (hidden by default) -->
+    <div id="modalRoot"></div>
+
+    <!-- ============================================================ -->
+    <!-- App                                                          -->
+    <!-- ============================================================ -->
+    <script>
+      // -------- Config --------
+      const CONFIG = {
+        chainId: 5042002,
+        chainIdHex: "0x4CE152",
+        chainName: "Arc Testnet",
+        rpcUrl: "https://rpc.testnet.arc.network",
+        explorerBase: "https://testnet.arcscan.app",
+        nativeSymbol: "USDC",
+        // Phase 2 deployment (reputation-enabled):
+        registry: "0x74635245CfF23a7F261CD5ECF72693cbc75481e4",
+        payPerCall: "0x28aa00Af89483218E6Bc036a72C4bAe8A1514BFE",
+        usdc: "0x3600000000000000000000000000000000000000",
+      };
+
+      // -------- ABIs (minimal — only what we call) --------
+      const ERC20_ABI = [
+        "function balanceOf(address) view returns (uint256)",
+        "function decimals() view returns (uint8)",
+        "function allowance(address, address) view returns (uint256)",
+        "function approve(address, uint256) returns (bool)",
+      ];
+
+      const REGISTRY_ABI = [
+        "function register(address signer, uint256 stakeAmount, uint256 pricePerCall, uint32 maxResponseTime, uint32 slashBps, string endpoint) returns (uint256)",
+        "function providerIdOf(address) view returns (uint256)",
+        "function getProvider(uint256) view returns (tuple(address owner, address signer, uint256 stake, uint256 pricePerCall, uint32 maxResponseTime, uint32 slashBps, bool active))",
+        "function getEndpoint(uint256) view returns (string)",
+        "function pendingCalls(uint256) view returns (uint32)",
+        "function nextProviderId() view returns (uint256)",
+        "function getReputationScore(uint256) view returns (uint8)",
+        "function completedCalls(uint256) view returns (uint32)",
+        "function slashedCalls(uint256) view returns (uint32)",
+        "event ProviderRegistered(uint256 indexed providerId, address indexed owner, address signer, uint256 stake, uint256 pricePerCall, uint32 maxResponseTime, uint32 slashBps, string endpoint)",
+        "event ReputationUpdated(uint256 indexed providerId, uint32 completedCalls, uint32 slashedCalls)",
+      ];
+
+      const PAY_ABI = [
+        "function callService(uint256 providerId, bytes32 requestHash) returns (bytes32)",
+        "function submitReceipt(bytes32 callId, bytes32 responseHash, bytes signature)",
+        "function claimTimeout(bytes32 callId)",
+        "function getCall(bytes32) view returns (tuple(uint256 providerId, address caller, uint256 amount, uint32 startedAt, uint32 deadline, bytes32 requestHash, bytes32 responseHash, uint8 status))",
+        "event CallStarted(bytes32 indexed callId, uint256 indexed providerId, address indexed caller, uint256 amount, bytes32 requestHash, uint32 deadline)",
+        "event ReceiptSubmitted(bytes32 indexed callId, bytes32 responseHash)",
+        "event CallSlashed(bytes32 indexed callId, uint256 refunded, uint256 slashed)",
+      ];
+
+      // -------- State --------
+      const state = {
+        provider: null, // ethers BrowserProvider
+        signer: null,
+        address: null,
+        usdc: null,
+        registry: null,
+        payPerCall: null,
+        usdcDecimals: 6,
+        myCalls: new Map(), // callId -> call obj
+        providerInfo: null, // { id, data } or null
+        seenEvents: new Set(), // dedupe key = `${txHash}:${logIndex}`
+        allProviders: [], // public directory
+        networkStats: null, // aggregate metrics
+      };
+
+      // -------- UI helpers --------
+      const $ = (id) => document.getElementById(id);
+
+      const toast = ({ title, detail, kind = "info", link, timeout = 6000 }) => {
+        const el = document.createElement("div");
+        el.className = `toast ${kind}`;
+        const body = document.createElement("div");
+        body.className = "toast-body";
+        body.innerHTML = `<div class="title">${title}</div>${
+          detail ? `<div class="detail">${detail}</div>` : ""
+        }${
+          link
+            ? `<div class="detail"><a href="${link}" target="_blank" rel="noreferrer">view on arcscan →</a></div>`
+            : ""
+        }`;
+        el.appendChild(body);
+        $("toasts").appendChild(el);
+        if (timeout) {
+          setTimeout(() => el.remove(), timeout);
+        }
+        return el;
+      };
+
+      const short = (a, n = 4) =>
+        a ? `${a.slice(0, n + 2)}…${a.slice(-n)}` : "";
+
+      const txLink = (hash) => `${CONFIG.explorerBase}/tx/${hash}`;
+      const addrLink = (a) => `${CONFIG.explorerBase}/address/${a}`;
+
+      /**
+       * Arc RPC returns HTTP 413 for wide eth_getLogs windows. We scan the
+       * last LOG_SCAN_BLOCKS in chunks of CHUNK_SIZE, merging the results.
+       * If any chunk still fails we halve the chunk for retry — up to 3 levels.
+       */
+      const LOG_SCAN_BLOCKS = 50_000; // total window to scan (~1-2 days)
+      const CHUNK_SIZE = 2_000;        // per-call block window
+      const MIN_CHUNK = 250;           // smallest we'll shrink to on retry
+
+      async function scanRange(contract, filter, from, to, size) {
+        const results = [];
+        let cursor = from;
+        while (cursor <= to) {
+          const end = Math.min(cursor + size - 1, to);
+          try {
+            const logs = await contract.queryFilter(filter, cursor, end);
+            for (const l of logs) results.push(l);
+            cursor = end + 1;
+          } catch (e) {
+            // If the RPC choked on this chunk, shrink and retry.
+            if (size > MIN_CHUNK) {
+              const half = Math.floor(size / 2);
+              const inner = await scanRange(contract, filter, cursor, end, half);
+              for (const l of inner) results.push(l);
+              cursor = end + 1;
+            } else {
+              // Give up on this chunk; skip it and continue.
+              console.warn(`scanRange skipped [${cursor}..${end}]:`, e.message);
+              cursor = end + 1;
+            }
+          }
+        }
+        return results;
+      }
+
+      async function safeQuery(contract, eventName, extraFilter) {
+        try {
+          const provider = contract.runner.provider;
+          const latest = await provider.getBlockNumber();
+          const from = Math.max(0, latest - LOG_SCAN_BLOCKS);
+          const filter = extraFilter ?? eventName;
+          return await scanRange(contract, filter, from, latest, CHUNK_SIZE);
+        } catch (e) {
+          console.warn(`safeQuery(${eventName}) failed:`, e.message);
+          return [];
+        }
+      }
+
+      // -------- Connection --------
+      async function connect() {
+        if (!window.ethereum) {
+          toast({
+            kind: "err",
+            title: "No wallet detected",
+            detail: "Install MetaMask to continue.",
+          });
+          return;
+        }
+
+        try {
+          state.provider = new ethers.BrowserProvider(window.ethereum);
+          await state.provider.send("eth_requestAccounts", []);
+          state.signer = await state.provider.getSigner();
+          state.address = await state.signer.getAddress();
+
+          await ensureArcNetwork();
+
+          state.usdc = new ethers.Contract(CONFIG.usdc, ERC20_ABI, state.signer);
+          state.registry = new ethers.Contract(CONFIG.registry, REGISTRY_ABI, state.signer);
+          state.payPerCall = new ethers.Contract(CONFIG.payPerCall, PAY_ABI, state.signer);
+
+          try {
+            state.usdcDecimals = Number(await state.usdc.decimals());
+          } catch {
+            state.usdcDecimals = 6;
+          }
+
+          showConnected();
+          await refreshAll();
+          subscribeToEvents();
+
+          window.ethereum.on?.("accountsChanged", () => location.reload());
+          window.ethereum.on?.("chainChanged", () => location.reload());
+        } catch (e) {
+          console.error(e);
+          toast({ kind: "err", title: "Connect failed", detail: e.message });
+        }
+      }
+
+      async function ensureArcNetwork() {
+        const net = await state.provider.getNetwork();
+        if (Number(net.chainId) === CONFIG.chainId) return;
+
+        try {
+          await window.ethereum.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: CONFIG.chainIdHex }],
+          });
+        } catch (e) {
+          if (e.code === 4902) {
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: CONFIG.chainIdHex,
+                  chainName: CONFIG.chainName,
+                  rpcUrls: [CONFIG.rpcUrl],
+                  nativeCurrency: { name: "USDC", symbol: CONFIG.nativeSymbol, decimals: 18 },
+                  blockExplorerUrls: [CONFIG.explorerBase],
+                },
+              ],
+            });
+          } else {
+            throw e;
+          }
+        }
+        state.provider = new ethers.BrowserProvider(window.ethereum);
+        state.signer = await state.provider.getSigner();
+        state.address = await state.signer.getAddress();
+      }
+
+      function showConnected() {
+        $("disconnectedView").classList.add("hidden");
+        $("connectedView").classList.remove("hidden");
+        $("connectBtn").classList.add("hidden");
+        $("addrPill").classList.remove("hidden");
+        $("addrText").textContent = short(state.address, 6);
+        $("balanceBox").classList.remove("hidden");
+        $("netLabel").textContent = CONFIG.chainName;
+        $("netDot").classList.add("ok");
+      }
+
+      function showDisconnected() {
+        $("netLabel").textContent = "Disconnected";
+        $("netDot").className = "net-dot";
+        $("connectBtn").classList.remove("hidden");
+        $("addrPill").classList.add("hidden");
+        $("balanceBox").classList.add("hidden");
+      }
+
+      // -------- Refresh data --------
+      async function refreshAll() {
+        await Promise.all([
+          refreshBalance(),
+          refreshProvider(),
+          refreshHero(),
+          refreshAllProviders(),
+          refreshNetworkStats(),
+        ]);
+      }
+
+      async function refreshBalance() {
+        try {
+          const b = await state.usdc.balanceOf(state.address);
+          $("usdcBal").textContent = ethers.formatUnits(b, state.usdcDecimals);
+        } catch (e) {
+          $("usdcBal").textContent = "—";
+        }
+      }
+
+      async function refreshProvider() {
+        try {
+          const id = Number(await state.registry.providerIdOf(state.address));
+          if (id === 0) {
+            state.providerInfo = null;
+            $("providerBox").innerHTML = `
+              <div class="empty-state">not registered — use the left panel to stake</div>
+            `;
+            return;
+          }
+          const data = await state.registry.getProvider(id);
+          const endpoint = await state.registry.getEndpoint(id);
+          const pending = Number(await state.registry.pendingCalls(id));
+          state.providerInfo = { id, data, endpoint, pending };
+          renderProvider();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      function renderProvider() {
+        if (!state.providerInfo) return;
+        const { id, data, endpoint, pending } = state.providerInfo;
+        const d = state.usdcDecimals;
+        $("providerBox").innerHTML = `
+          <dl class="kv">
+            <dt>Provider ID</dt>
+            <dd>#${id}</dd>
+            <dt>Status</dt>
+            <dd>${data.active ? `<span style="color: var(--accent)">● active</span>` : `<span style="color: var(--danger)">● inactive</span>`}</dd>
+            <dt>Signer</dt>
+            <dd>${short(data.signer, 6)}</dd>
+            <dt>Stake</dt>
+            <dd>${ethers.formatUnits(data.stake, d)} USDC</dd>
+            <dt>Price / call</dt>
+            <dd>${ethers.formatUnits(data.pricePerCall, d)} USDC</dd>
+            <dt>Max response</dt>
+            <dd>${data.maxResponseTime}s</dd>
+            <dt>Slash</dt>
+            <dd>${Number(data.slashBps) / 100}%</dd>
+            <dt>Pending calls</dt>
+            <dd>${pending}</dd>
+            <dt>Endpoint</dt>
+            <dd style="word-break: break-all">${endpoint || "—"}</dd>
+          </dl>
+        `;
+      }
+
+      async function refreshHero() {
+        try {
+          const next = Number(await state.registry.nextProviderId());
+          $("heroProviders").textContent = (next - 1).toString();
+        } catch {}
+      }
+
+      // -------- All providers (public list) --------
+      async function refreshAllProviders() {
+        try {
+          const next = Number(await state.registry.nextProviderId());
+          const total = next - 1;
+          if (total === 0) {
+            $("allProvidersBox").innerHTML = `
+              <div class="empty-state">no providers registered yet — be the first!</div>
+            `;
+            return;
+          }
+
+          // Fetch all providers and their reputation scores in parallel
+          const ids = [];
+          for (let i = 1; i <= total; i++) ids.push(i);
+          const [providers, endpoints, scores] = await Promise.all([
+            Promise.all(ids.map((i) => state.registry.getProvider(i))),
+            Promise.all(ids.map((i) => state.registry.getEndpoint(i).catch(() => ""))),
+            Promise.all(ids.map((i) => state.registry.getReputationScore(i).catch(() => 0))),
+          ]);
+
+          state.allProviders = ids.map((id, i) => {
+            const p = providers[i];
+            return {
+              id,
+              owner: p.owner,
+              signer: p.signer,
+              stake: p.stake,
+              pricePerCall: p.pricePerCall,
+              maxResponseTime: p.maxResponseTime,
+              slashBps: p.slashBps,
+              active: p.active,
+              endpoint: endpoints[i],
+              reputation: Number(scores[i]),
+            };
+          });
+
+          renderAllProviders();
+        } catch (e) {
+          console.error("refreshAllProviders failed:", e);
+        }
+      }
+
+      function renderAllProviders() {
+        const d = state.usdcDecimals;
+        const myAddr = state.address?.toLowerCase();
+        const rows = state.allProviders
+          .map((p) => {
+            const isSelf = myAddr && p.owner?.toLowerCase() === myAddr;
+            const badge = p.active
+              ? `<span class="badge active">active</span>`
+              : `<span class="badge inactive">inactive</span>`;
+            const rep = p.reputation ?? 0;
+            const repColor = rep >= 80 ? "var(--accent)" : rep >= 50 ? "var(--warn)" : "var(--danger)";
+            return `
+              <tr data-pid="${p.id}" class="${isSelf ? "is-self" : ""}">
+                <td class="col-id">#${p.id}</td>
+                <td class="col-owner">${short(p.owner, 4)}${isSelf ? `<span class="self-tag">you</span>` : ""}</td>
+                <td class="col-price">${ethers.formatUnits(p.pricePerCall, d)}</td>
+                <td class="col-stake">${ethers.formatUnits(p.stake, d)}</td>
+                <td class="col-sla">${p.maxResponseTime}s · ${Number(p.slashBps) / 100}%</td>
+                <td style="text-align: right; color: ${repColor}; font-weight: 600">${rep}</td>
+                <td class="col-status">${badge}</td>
+              </tr>
+            `;
+          })
+          .join("");
+
+        $("allProvidersBox").innerHTML = `
+          <table class="provider-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Owner</th>
+                <th style="text-align: right">Price</th>
+                <th style="text-align: right">Stake</th>
+                <th style="text-align: right">SLA · slash</th>
+                <th style="text-align: right">Rep</th>
+                <th style="text-align: right">Status</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
+
+        // Wire up row clicks → open modal
+        $("allProvidersBox")
+          .querySelectorAll("tbody tr[data-pid]")
+          .forEach((tr) => {
+            tr.addEventListener("click", () => openProviderModal(Number(tr.dataset.pid)));
+          });
+      }
+
+      // -------- Network stats (on-chain aggregate) --------
+      async function refreshNetworkStats() {
+        try {
+          const [startedLogs, receiptLogs, slashedLogs, providerLogs] = await Promise.all([
+            safeQuery(state.payPerCall, "CallStarted"),
+            safeQuery(state.payPerCall, "ReceiptSubmitted"),
+            safeQuery(state.payPerCall, "CallSlashed"),
+            safeQuery(state.registry, "ProviderRegistered"),
+          ]);
+
+          state.networkStats = {
+            providers: providerLogs.length,
+            calls: startedLogs.length,
+            receipts: receiptLogs.length,
+            slashed: slashedLogs.length,
+            slashedAmount: slashedLogs.reduce((acc, l) => acc + (l.args?.slashed ?? 0n), 0n),
+          };
+
+          const d = state.usdcDecimals;
+          $("statProviders").textContent = state.networkStats.providers.toString();
+          $("statCalls").textContent = state.networkStats.calls.toString();
+          $("statReceipts").textContent = state.networkStats.receipts.toString();
+          $("statSlashed").textContent = ethers.formatUnits(state.networkStats.slashedAmount, d);
+
+          const honorRate = state.networkStats.calls > 0
+            ? Math.round((state.networkStats.receipts / state.networkStats.calls) * 100)
+            : 0;
+          $("statReceiptsSub").textContent = `${honorRate}% honor rate`;
+          $("statSlashedSub").textContent = `${state.networkStats.slashed} slash${state.networkStats.slashed === 1 ? "" : "es"}`;
+
+          // Also update hero (disconnected view)
+          $("heroCalls").textContent = state.networkStats.calls.toString();
+          $("heroSlashes").textContent = state.networkStats.slashed.toString();
+        } catch (e) {
+          console.error("refreshNetworkStats failed:", e);
+        }
+      }
+
+      // -------- Provider detail modal --------
+      async function openProviderModal(providerId) {
+        const root = $("modalRoot");
+        root.innerHTML = `
+          <div class="modal-backdrop" id="modalBackdrop">
+            <div class="modal" onclick="event.stopPropagation()">
+              <div class="modal-head">
+                <h2>Provider #${providerId}</h2>
+                <button class="modal-close" id="modalCloseBtn">×</button>
+              </div>
+              <div class="modal-body">
+                <div class="empty-state">loading provider details…</div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        $("modalBackdrop").addEventListener("click", closeModal);
+        $("modalCloseBtn").addEventListener("click", closeModal);
+
+        // Helper: get the current modal-body, or null if the modal has been closed.
+        const getBody = () => root.querySelector(".modal-body");
+
+        try {
+          const [provider, endpoint, pending, onChainScore, completedCount, slashedCount] = await Promise.all([
+            state.registry.getProvider(providerId),
+            state.registry.getEndpoint(providerId),
+            state.registry.pendingCalls(providerId),
+            state.registry.getReputationScore(providerId),
+            state.registry.completedCalls(providerId),
+            state.registry.slashedCalls(providerId),
+          ]);
+
+          // Fetch all calls for this provider by filtering CallStarted events
+          const startedLogs = await safeQuery(
+            state.payPerCall,
+            "CallStarted",
+            state.payPerCall.filters.CallStarted(null, providerId),
+          );
+          const receiptLogs = await safeQuery(state.payPerCall, "ReceiptSubmitted");
+          const slashedLogs = await safeQuery(state.payPerCall, "CallSlashed");
+
+          const receiptSet = new Set(receiptLogs.map((l) => l.args.callId));
+          const slashedSet = new Set(slashedLogs.map((l) => l.args.callId));
+
+          const calls = startedLogs.map((l) => {
+            const cid = l.args.callId;
+            let status = "pending";
+            if (receiptSet.has(cid)) status = "completed";
+            else if (slashedSet.has(cid)) status = "slashed";
+            return {
+              callId: cid,
+              caller: l.args.caller,
+              amount: l.args.amount,
+              deadline: Number(l.args.deadline),
+              blockNumber: l.blockNumber,
+              status,
+              txHash: l.transactionHash,
+            };
+          });
+
+          // Use on-chain values as source of truth — event log fallback for display only
+          const completed = Number(completedCount);
+          const slashed = Number(slashedCount);
+          const total = completed + slashed + calls.filter((c) => c.status === "pending").length;
+          const honorRate = completed + slashed > 0 ? Math.round((completed / (completed + slashed)) * 100) : 100;
+
+          // Reputation comes from the contract (Bayesian formula α=2, β=1)
+          const reputation = Number(onChainScore);
+          const repClass = reputation >= 80 ? "" : reputation >= 50 ? "low" : "crit";
+
+          const isSelf = provider.owner.toLowerCase() === state.address?.toLowerCase();
+          const d = state.usdcDecimals;
+
+          const recentCallsHtml = calls
+            .slice(-8)
+            .reverse()
+            .map((c) => {
+              const dotClass =
+                c.status === "completed"
+                  ? "status-completed"
+                  : c.status === "slashed"
+                  ? "status-slashed"
+                  : "status-pending";
+              return `
+                <div class="mini-call">
+                  <span class="status-dot ${dotClass}"></span>
+                  <div>
+                    <span class="call-hash">${short(c.callId, 5)}</span>
+                    <span class="call-time">by ${short(c.caller, 4)}</span>
+                  </div>
+                  <span class="call-amount">${ethers.formatUnits(c.amount, d)} USDC</span>
+                </div>
+              `;
+            })
+            .join("");
+
+          const body = getBody();
+          if (!body) return; // modal closed during async load
+          body.innerHTML = `
+            <div class="section-title">Reputation</div>
+            <div class="provider-metrics">
+              <div class="metric-cell">
+                <div class="metric-label">Score</div>
+                <div class="metric-value ${reputation >= 80 ? "accent" : reputation >= 50 ? "" : "danger"}">${reputation}</div>
+                <div class="rep-meter">
+                  <div class="rep-fill ${repClass}" style="width: ${reputation}%"></div>
+                </div>
+              </div>
+              <div class="metric-cell">
+                <div class="metric-label">Honor rate</div>
+                <div class="metric-value accent">${honorRate}%</div>
+                <div class="metric-sub">${completed} of ${completed + slashed || 0}</div>
+              </div>
+              <div class="metric-cell">
+                <div class="metric-label">Total calls</div>
+                <div class="metric-value">${total}</div>
+                <div class="metric-sub">${pending} pending</div>
+              </div>
+              <div class="metric-cell">
+                <div class="metric-label">Slashed</div>
+                <div class="metric-value ${slashed > 0 ? "danger" : ""}">${slashed}</div>
+                <div class="metric-sub">${slashed > 0 ? "SLA violations" : "no violations"}</div>
+              </div>
+            </div>
+
+            <div class="section-title">Terms</div>
+            <dl class="kv">
+              <dt>Owner</dt>
+              <dd>${provider.owner}${isSelf ? `<span class="self-tag">you</span>` : ""}</dd>
+              <dt>Signer</dt>
+              <dd>${provider.signer}</dd>
+              <dt>Status</dt>
+              <dd>${provider.active ? `<span style="color: var(--accent)">● active</span>` : `<span style="color: var(--danger)">● inactive</span>`}</dd>
+              <dt>Stake</dt>
+              <dd>${ethers.formatUnits(provider.stake, d)} USDC</dd>
+              <dt>Price / call</dt>
+              <dd>${ethers.formatUnits(provider.pricePerCall, d)} USDC</dd>
+              <dt>Max response</dt>
+              <dd>${provider.maxResponseTime}s</dd>
+              <dt>Slash</dt>
+              <dd>${Number(provider.slashBps) / 100}%</dd>
+              <dt>Endpoint</dt>
+              <dd style="word-break: break-all">${endpoint || "—"}</dd>
+            </dl>
+
+            ${
+              calls.length > 0
+                ? `
+              <div class="section-title">Recent calls (${calls.length} total)</div>
+              <div>${recentCallsHtml}</div>
+            `
+                : `<div class="section-title">No calls yet</div>`
+            }
+
+            ${
+              !isSelf && provider.active
+                ? `
+              <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end">
+                <button class="btn btn-sm" id="modalCallBtn">Call this provider</button>
+              </div>
+            `
+                : ""
+            }
+          `;
+
+          const callBtn = document.getElementById("modalCallBtn");
+          if (callBtn) {
+            callBtn.addEventListener("click", () => {
+              $("callProviderId").value = providerId.toString();
+              $("callProviderId").dispatchEvent(new Event("blur"));
+              closeModal();
+              $("actionCall").open = true;
+              $("actionCall").scrollIntoView({ behavior: "smooth", block: "center" });
+            });
+          }
+        } catch (e) {
+          console.error(e);
+          const body = getBody();
+          if (!body) return;
+          body.innerHTML = `
+            <div class="empty-state" style="color: var(--danger)">
+              failed to load: ${e.message}
+            </div>
+          `;
+        }
+      }
+
+      function closeModal() {
+        $("modalRoot").innerHTML = "";
+      }
+
+      // Escape to close modal
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeModal();
+      });
+
+      // -------- Actions: register --------
+      async function doRegister() {
+        const signerAddr = $("regSigner").value.trim() || state.address;
+        const stake = $("regStake").value.trim();
+        const price = $("regPrice").value.trim();
+        const maxResp = parseInt($("regMaxResp").value.trim(), 10);
+        const slashPct = parseFloat($("regSlashPct").value.trim());
+        const endpoint = $("regEndpoint").value.trim();
+
+        if (!stake || !price || isNaN(maxResp) || isNaN(slashPct)) {
+          toast({ kind: "err", title: "Fill in all fields" });
+          return;
+        }
+
+        try {
+          const stakeWei = ethers.parseUnits(stake, state.usdcDecimals);
+          const priceWei = ethers.parseUnits(price, state.usdcDecimals);
+          const slashBps = Math.round(slashPct * 100);
+
+          // Step 1: approve
+          const tApprove = toast({
+            kind: "info",
+            title: "Approving USDC…",
+            detail: `<span class="spinner"></span> waiting for signature`,
+            timeout: 0,
+          });
+          const txA = await state.usdc.approve(CONFIG.registry, stakeWei);
+          tApprove.querySelector(".title").textContent = "Approval sent";
+          tApprove.querySelector(".detail").innerHTML = `tx ${short(txA.hash, 6)}`;
+          await txA.wait();
+          tApprove.remove();
+          toast({
+            kind: "ok",
+            title: "USDC approved",
+            link: txLink(txA.hash),
+            detail: short(txA.hash, 8),
+          });
+
+          // Step 2: register
+          const tReg = toast({
+            kind: "info",
+            title: "Registering provider…",
+            detail: `<span class="spinner"></span> waiting for signature`,
+            timeout: 0,
+          });
+          const tx = await state.registry.register(
+            signerAddr,
+            stakeWei,
+            priceWei,
+            maxResp,
+            slashBps,
+            endpoint,
+          );
+          const receipt = await tx.wait();
+          tReg.remove();
+          toast({
+            kind: "ok",
+            title: "Provider registered",
+            link: txLink(tx.hash),
+            detail: `stake: ${stake} usdc`,
+          });
+          await refreshAll();
+          $("actionRegister").open = false;
+          $("actionCall").open = true;
+        } catch (e) {
+          console.error(e);
+          toast({ kind: "err", title: "Register failed", detail: e.reason || e.message });
+        }
+      }
+
+      // -------- Actions: call service --------
+      async function doCall() {
+        const idStr = $("callProviderId").value.trim();
+        const payload = $("callPayload").value;
+
+        if (!idStr) {
+          toast({ kind: "err", title: "Enter a provider ID" });
+          return;
+        }
+        const providerId = BigInt(idStr);
+
+        try {
+          // Fetch SLA terms to know the price
+          const p = await state.registry.getProvider(providerId);
+          if (!p.active) {
+            toast({ kind: "err", title: "Provider is inactive" });
+            return;
+          }
+          const price = p.pricePerCall;
+
+          // Approve if needed
+          const currentAllowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
+          if (currentAllowance < price) {
+            const tA = toast({
+              kind: "info",
+              title: "Approving USDC…",
+              detail: `<span class="spinner"></span> waiting for signature`,
+              timeout: 0,
+            });
+            const txA = await state.usdc.approve(CONFIG.payPerCall, ethers.MaxUint256);
+            await txA.wait();
+            tA.remove();
+            toast({ kind: "ok", title: "USDC approved", link: txLink(txA.hash) });
+          }
+
+          // callService
+          const requestHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
+          const tC = toast({
+            kind: "info",
+            title: "Opening call…",
+            detail: `<span class="spinner"></span> waiting for signature`,
+            timeout: 0,
+          });
+          const tx = await state.payPerCall.callService(providerId, requestHash);
+          const rc = await tx.wait();
+          tC.remove();
+
+          // Find CallStarted event to grab callId
+          const parsed = rc.logs
+            .map((l) => {
+              try {
+                return state.payPerCall.interface.parseLog(l);
+              } catch {
+                return null;
+              }
+            })
+            .filter(Boolean)
+            .find((x) => x.name === "CallStarted");
+
+          if (parsed) {
+            const callId = parsed.args.callId;
+            toast({
+              kind: "ok",
+              title: "Call opened",
+              detail: `call id ${short(callId, 8)}`,
+              link: txLink(tx.hash),
+            });
+            // Auto-fill receipt/timeout fields for convenience
+            $("rcpCallId").value = callId;
+            $("toCallId").value = callId;
+          }
+          await refreshAll();
+        } catch (e) {
+          console.error(e);
+          toast({ kind: "err", title: "Call failed", detail: e.reason || e.message });
+        }
+      }
+
+      // -------- Actions: submit receipt --------
+      async function doReceipt() {
+        const callId = $("rcpCallId").value.trim();
+        const payload = $("rcpPayload").value;
+
+        if (!callId || callId.length !== 66) {
+          toast({ kind: "err", title: "Enter a 32-byte call ID" });
+          return;
+        }
+
+        try {
+          const responseHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
+
+          // Build digest: keccak256(callId, responseHash), then EIP-191 prefix
+          const inner = ethers.keccak256(ethers.concat([callId, responseHash]));
+          // Use signMessage on the raw bytes — ethers v6 wraps with \x19 prefix
+          const tSign = toast({
+            kind: "info",
+            title: "Signing receipt…",
+            detail: `<span class="spinner"></span> sign in your wallet`,
+            timeout: 0,
+          });
+          const signature = await state.signer.signMessage(ethers.getBytes(inner));
+          tSign.remove();
+
+          const tSub = toast({
+            kind: "info",
+            title: "Submitting receipt…",
+            detail: `<span class="spinner"></span> waiting for signature`,
+            timeout: 0,
+          });
+          const tx = await state.payPerCall.submitReceipt(callId, responseHash, signature);
+          await tx.wait();
+          tSub.remove();
+          toast({
+            kind: "ok",
+            title: "Receipt submitted",
+            link: txLink(tx.hash),
+            detail: "escrow released to provider",
+          });
+          await refreshAll();
+        } catch (e) {
+          console.error(e);
+          toast({ kind: "err", title: "Receipt failed", detail: e.reason || e.message });
+        }
+      }
+
+      // -------- Actions: claim timeout --------
+      async function doTimeout() {
+        const callId = $("toCallId").value.trim();
+        if (!callId || callId.length !== 66) {
+          toast({ kind: "err", title: "Enter a 32-byte call ID" });
+          return;
+        }
+
+        try {
+          const t = toast({
+            kind: "info",
+            title: "Claiming timeout…",
+            detail: `<span class="spinner"></span> waiting for signature`,
+            timeout: 0,
+          });
+          const tx = await state.payPerCall.claimTimeout(callId);
+          await tx.wait();
+          t.remove();
+          toast({
+            kind: "ok",
+            title: "Timeout claimed — provider slashed",
+            link: txLink(tx.hash),
+          });
+          await refreshAll();
+        } catch (e) {
+          console.error(e);
+          toast({ kind: "err", title: "Timeout failed", detail: e.reason || e.message });
+        }
+      }
+
+      // -------- Event subscription --------
+      function subscribeToEvents() {
+        // Clear empty state once first event arrives
+        let gotFirst = false;
+        const clearEmpty = () => {
+          if (gotFirst) return;
+          gotFirst = true;
+          $("feed").innerHTML = "";
+        };
+
+        // ethers v6 fires the same event multiple times (pending → confirmed,
+        // provider reconnects, etc). Dedupe by tx hash + log index.
+        const firstTime = (ev) => {
+          const log = ev?.log ?? ev;
+          if (!log?.transactionHash) return true; // can't dedupe, accept
+          const key = `${log.transactionHash}:${log.index ?? log.logIndex ?? 0}`;
+          if (state.seenEvents.has(key)) return false;
+          state.seenEvents.add(key);
+          return true;
+        };
+
+        state.payPerCall.on("CallStarted", (callId, providerId, caller, amount, requestHash, deadline, ev) => {
+          if (!firstTime(ev)) return;
+          clearEmpty();
+          addFeed({
+            tag: "started",
+            tagText: "call opened",
+            txHash: ev.log?.transactionHash,
+            body: `<span class="hi">${short(caller, 4)}</span> → provider #${providerId} · ${ethers.formatUnits(amount, state.usdcDecimals)} USDC escrowed`,
+          });
+          if (caller.toLowerCase() === state.address?.toLowerCase()) {
+            state.myCalls.set(callId, {
+              callId,
+              providerId,
+              caller,
+              amount,
+              deadline: Number(deadline),
+              status: 1,
+            });
+            // Auto-fill receipt + timeout fields with the latest call id
+            $("rcpCallId").value = callId;
+            $("toCallId").value = callId;
+            renderCalls();
+          }
+          refreshBalance();
+          refreshProvider();
+          refreshNetworkStats();
+          refreshAllProviders();
+        });
+
+        state.payPerCall.on("ReceiptSubmitted", (callId, responseHash, ev) => {
+          if (!firstTime(ev)) return;
+          clearEmpty();
+          addFeed({
+            tag: "submitted",
+            tagText: "receipt",
+            txHash: ev.log?.transactionHash,
+            body: `receipt signed for call <span class="hi">${short(callId, 6)}</span>`,
+          });
+          if (state.myCalls.has(callId)) {
+            state.myCalls.get(callId).status = 2;
+            renderCalls();
+          }
+          refreshBalance();
+          refreshProvider();
+          refreshNetworkStats();
+          refreshAllProviders();
+        });
+
+        state.payPerCall.on("CallSlashed", (callId, refunded, slashed, ev) => {
+          if (!firstTime(ev)) return;
+          clearEmpty();
+          addFeed({
+            tag: "slashed",
+            tagText: "slashed",
+            txHash: ev.log?.transactionHash,
+            body: `call <span class="hi">${short(callId, 6)}</span> timed out · refund ${ethers.formatUnits(refunded, state.usdcDecimals)} + slash ${ethers.formatUnits(slashed, state.usdcDecimals)} USDC`,
+          });
+          if (state.myCalls.has(callId)) {
+            state.myCalls.get(callId).status = 3;
+            renderCalls();
+          }
+          refreshBalance();
+          refreshProvider();
+          refreshNetworkStats();
+          refreshAllProviders();
+        });
+
+        state.registry.on("ProviderRegistered", (providerId, owner, _signer, stake, _price, _mrt, _bps, endpoint, ev) => {
+          if (!firstTime(ev)) return;
+          clearEmpty();
+          addFeed({
+            tag: "registered",
+            tagText: "provider",
+            txHash: ev.log?.transactionHash,
+            body: `#${providerId} registered by <span class="hi">${short(owner, 4)}</span> · ${ethers.formatUnits(stake, state.usdcDecimals)} USDC staked`,
+          });
+          refreshHero();
+          refreshNetworkStats();
+          refreshAllProviders();
+        });
+
+        state.registry.on("ReputationUpdated", (providerId, completed, slashed, ev) => {
+          if (!firstTime(ev)) return;
+          clearEmpty();
+          const total = Number(completed) + Number(slashed);
+          addFeed({
+            tag: "registered",
+            tagText: "rep",
+            txHash: ev.log?.transactionHash,
+            body: `#${providerId} reputation updated · <span class="hi">${completed}</span> completed, <span class="hi">${slashed}</span> slashed`,
+          });
+          refreshAllProviders();
+        });
+      }
+
+      function addFeed({ tag, tagText, body, txHash }) {
+        const row = document.createElement("div");
+        row.className = "feed-row";
+        const time = new Date().toLocaleTimeString("en-US", { hour12: false });
+        row.innerHTML = `
+          <span class="feed-time">${time}</span>
+          <span class="feed-tag ${tag}">${tagText}</span>
+          <span class="feed-body">${body}</span>
+          ${txHash ? `<a class="feed-link" href="${txLink(txHash)}" target="_blank" rel="noreferrer">${short(txHash, 4)} ↗</a>` : ""}
+        `;
+        $("feed").prepend(row);
+      }
+
+      function renderCalls() {
+        const calls = Array.from(state.myCalls.values()).reverse();
+        if (calls.length === 0) {
+          $("callsBox").innerHTML = `<div class="empty-state">no calls yet — make one or submit a receipt</div>`;
+          $("callsSummary").textContent = "";
+          return;
+        }
+
+        const statusName = ["—", "pending", "completed", "slashed"];
+        const statusClass = ["", "status-pending", "status-completed", "status-slashed"];
+
+        $("callsBox").innerHTML = calls
+          .map((c) => {
+            const s = Number(c.status);
+            const canSubmit = s === 1 && c.deadline > Date.now() / 1000;
+            const canTimeout = s === 1 && c.deadline <= Date.now() / 1000;
+            return `
+              <div class="call-row" data-callid="${c.callId}">
+                <div>
+                  <div class="head-line">
+                    <span class="status-dot ${statusClass[s]}"></span>
+                    <span>call ${short(c.callId, 6)}</span>
+                    <span style="color: var(--text-faint)">· provider #${c.providerId} · ${ethers.formatUnits(c.amount, state.usdcDecimals)} USDC</span>
+                  </div>
+                  <div class="sub-line">
+                    ${statusName[s]}${c.deadline ? ` · deadline ${new Date(c.deadline * 1000).toLocaleTimeString("en-US", { hour12: false })}` : ""}
+                  </div>
+                </div>
+                <div style="display: flex; gap: 6px">
+                  ${canSubmit ? `<button class="btn btn-sm" data-action="fill-receipt" data-callid="${c.callId}">receipt</button>` : ""}
+                  ${canTimeout ? `<button class="btn btn-sm btn-danger" data-action="fill-timeout" data-callid="${c.callId}">claim slash</button>` : ""}
+                </div>
+              </div>
+            `;
+          })
+          .join("");
+
+        $("callsSummary").textContent = `${calls.length} total · ${calls.filter((c) => c.status === 1).length} pending`;
+
+        // Hook up action buttons
+        $("callsBox")
+          .querySelectorAll("button[data-action]")
+          .forEach((b) => {
+            b.addEventListener("click", () => {
+              const a = b.dataset.action;
+              const id = b.dataset.callid;
+              if (a === "fill-receipt") {
+                $("rcpCallId").value = id;
+                $("actionReceipt").open = true;
+                $("rcpPayload").focus();
+              } else if (a === "fill-timeout") {
+                $("toCallId").value = id;
+                $("actionTimeout").open = true;
+              }
+            });
+          });
+      }
+
+      // Update call countdowns every second
+      setInterval(() => {
+        if (state.myCalls.size > 0) renderCalls();
+      }, 1000);
+
+      // -------- Provider preview on ID change --------
+      $("callProviderId").addEventListener("blur", async (ev) => {
+        const idStr = ev.target.value.trim();
+        if (!idStr || !state.registry) {
+          $("callProviderHint").textContent = "Enter a provider id to fetch SLA terms.";
+          return;
+        }
+        try {
+          const p = await state.registry.getProvider(BigInt(idStr));
+          if (p.owner === ethers.ZeroAddress) {
+            $("callProviderHint").textContent = `no provider with id ${idStr}`;
+            return;
+          }
+          const d = state.usdcDecimals;
+          $("callProviderHint").textContent =
+            `${p.active ? "active" : "INACTIVE"} · price ${ethers.formatUnits(p.pricePerCall, d)} USDC · SLA ${p.maxResponseTime}s · slash ${Number(p.slashBps) / 100}%`;
+        } catch (e) {
+          $("callProviderHint").textContent = "could not fetch provider info";
+        }
+      });
+
+      // -------- Wire up static links --------
+      $("registryLink").href = addrLink(CONFIG.registry);
+      $("registryLink").textContent = CONFIG.registry;
+      $("payPerCallLink").href = addrLink(CONFIG.payPerCall);
+      $("payPerCallLink").textContent = CONFIG.payPerCall;
+      $("usdcLink").href = addrLink(CONFIG.usdc);
+      $("usdcLink").textContent = CONFIG.usdc;
+
+      // -------- Click-to-copy address pill --------
+      $("addrPill").addEventListener("click", async () => {
+        await navigator.clipboard.writeText(state.address);
+        toast({ kind: "ok", title: "Address copied", timeout: 2000 });
+      });
+
+      // -------- Button wiring --------
+      $("connectBtn").addEventListener("click", connect);
+      $("connectBtn2").addEventListener("click", connect);
+      $("btnRegister").addEventListener("click", doRegister);
+      $("btnCall").addEventListener("click", doCall);
+      $("btnReceipt").addEventListener("click", doReceipt);
+      $("btnTimeout").addEventListener("click", doTimeout);
+      $("btnRefreshProvider").addEventListener("click", refreshAll);
+
+      // -------- Boot: read-only stats (no wallet needed) --------
+      // Populate the hero numbers on the disconnected view by hitting the RPC
+      // directly. Uses a JsonRpcProvider so nothing requires MetaMask.
+      (async () => {
+        try {
+          const ro = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
+          const registryRo = new ethers.Contract(CONFIG.registry, REGISTRY_ABI, ro);
+          const payPerCallRo = new ethers.Contract(CONFIG.payPerCall, PAY_ABI, ro);
+
+          const latest = await ro.getBlockNumber();
+          const from = Math.max(0, latest - LOG_SCAN_BLOCKS);
+
+          const [next, startedLogs, slashedLogs] = await Promise.all([
+            registryRo.nextProviderId(),
+            scanRange(payPerCallRo, "CallStarted", from, latest, CHUNK_SIZE).catch(() => []),
+            scanRange(payPerCallRo, "CallSlashed", from, latest, CHUNK_SIZE).catch(() => []),
+          ]);
+
+          $("heroProviders").textContent = (Number(next) - 1).toString();
+          $("heroCalls").textContent = startedLogs.length.toString();
+          $("heroSlashes").textContent = slashedLogs.length.toString();
+        } catch (e) {
+          console.warn("boot stats failed:", e);
+        }
+      })();
+    </script>
+  </body>
+</html>

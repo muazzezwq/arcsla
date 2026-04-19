@@ -1,0 +1,18 @@
+# foundry
+out/
+cache/
+broadcast/
+!broadcast/*/dry-run/
+
+# deps
+lib/
+node_modules/
+
+# env
+.env
+.env.*
+!.env.example
+
+# os
+.DS_Store
+*.log
