@@ -2279,11 +2279,18 @@
       async function refreshProvider() {
         try {
           const id = Number(await state.registry.providerIdOf(state.address));
+          const regBtn = $("btnRegister");
           if (id === 0) {
             state.providerInfo = null;
             $("providerBox").innerHTML = `
               <div class="empty-state">not registered — use the left panel to stake</div>
             `;
+            if (regBtn) {
+              regBtn.disabled = false;
+              regBtn.textContent = "Stake & register";
+              regBtn.style.opacity = "1";
+              regBtn.style.cursor = "pointer";
+            }
             return;
           }
           const data = await state.registry.getProvider(id);
@@ -2291,6 +2298,14 @@
           const pending = Number(await state.registry.pendingCalls(id));
           state.providerInfo = { id, data, endpoint, pending };
           renderProvider();
+
+          // Disable register button once registered — one provider per address
+          if (regBtn) {
+            regBtn.disabled = true;
+            regBtn.textContent = `Already registered as #${id}`;
+            regBtn.style.opacity = "0.5";
+            regBtn.style.cursor = "not-allowed";
+          }
         } catch (e) {
           console.error(e);
         }
@@ -2798,6 +2813,49 @@
           return;
         }
 
+        // Client-side sanity checks that mirror the contract's require()s.
+        // These give a clear message before the user wastes gas.
+        if (state.providerInfo && state.providerInfo.id) {
+          toast({
+            kind: "err",
+            title: "Already registered",
+            detail: `You are already provider #${state.providerInfo.id}. Each address can only register one provider.`,
+            timeout: 8000,
+          });
+          return;
+        }
+
+        const stakeNum = parseFloat(stake);
+        if (stakeNum < 10) {
+          toast({
+            kind: "err",
+            title: "Stake too low",
+            detail: "Minimum stake is 10 USDC.",
+            timeout: 6000,
+          });
+          return;
+        }
+
+        if (maxResp < 10) {
+          toast({
+            kind: "err",
+            title: "Response time too short",
+            detail: "Minimum maxResponseTime is 10 seconds.",
+            timeout: 6000,
+          });
+          return;
+        }
+
+        if (slashPct < 0 || slashPct > 100) {
+          toast({
+            kind: "err",
+            title: "Slash % out of range",
+            detail: "Slash percentage must be between 0 and 100.",
+            timeout: 6000,
+          });
+          return;
+        }
+
         try {
           const stakeWei = ethers.parseUnits(stake, state.usdcDecimals);
           const priceWei = ethers.parseUnits(price, state.usdcDecimals);
@@ -2850,8 +2908,42 @@
           $("actionCall").open = true;
         } catch (e) {
           console.error(e);
-          toast({ kind: "err", title: "Register failed", detail: e.reason || e.message });
+          toast({ kind: "err", title: "Register failed", detail: friendlyError(e) });
         }
+      }
+
+      // Map known contract error selectors to human messages.
+      // The signatures are keccak256(errorName()) and these are the first 4 bytes.
+      const ERROR_SELECTORS = {
+        "0x3a81d6fc": "Already registered (one provider per address).",
+        "0x5b0a6366": "Stake too low (minimum 10 USDC).",
+        "0x9067f0fa": "Response time too short (minimum 10 seconds).",
+        "0xe2c7a6fe": "Slash % too high (maximum 100%).",
+        "0x8579befe": "Signer cannot be the zero address.",
+        "0x2a38b8d8": "Unknown provider.",
+        "0x82b42900": "Caller is not the owner of this provider.",
+        "0x1d4c9010": "Cannot unstake while calls are pending.",
+        "0x8a65b01f": "Cooldown period has not passed yet.",
+        "0x025dbdd4": "Invalid signature on receipt.",
+        "0x00b8b8a3": "Call not in expected status.",
+        "0x46ecc9cb": "Deadline has already passed.",
+        "0x42b1e36b": "Deadline has not been reached yet.",
+      };
+
+      function friendlyError(e) {
+        if (!e) return "unknown error";
+        // Try custom error selector (first 4 bytes of data)
+        const data = e.data || e.error?.data;
+        if (typeof data === "string" && data.length >= 10) {
+          const sel = data.slice(0, 10).toLowerCase();
+          if (ERROR_SELECTORS[sel]) return ERROR_SELECTORS[sel];
+        }
+        // Reason string (require messages)
+        if (e.reason) return e.reason;
+        // User rejected in wallet
+        if (e.code === "ACTION_REJECTED" || e.code === 4001) return "Rejected in wallet.";
+        // Fall back to short generic message
+        return (e.shortMessage || e.message || "transaction reverted").slice(0, 200);
       }
 
       // -------- Actions: call service --------
@@ -2928,7 +3020,7 @@
           await refreshAll();
         } catch (e) {
           console.error(e);
-          toast({ kind: "err", title: "Call failed", detail: e.reason || e.message });
+          toast({ kind: "err", title: "Call failed", detail: friendlyError(e) });
         }
       }
 
@@ -2975,7 +3067,7 @@
           await refreshAll();
         } catch (e) {
           console.error(e);
-          toast({ kind: "err", title: "Receipt failed", detail: e.reason || e.message });
+          toast({ kind: "err", title: "Receipt failed", detail: friendlyError(e) });
         }
       }
 
@@ -3005,7 +3097,7 @@
           await refreshAll();
         } catch (e) {
           console.error(e);
-          toast({ kind: "err", title: "Timeout failed", detail: e.reason || e.message });
+          toast({ kind: "err", title: "Timeout failed", detail: friendlyError(e) });
         }
       }
 
