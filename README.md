@@ -67,13 +67,46 @@ Arc solves all three: [USDC is native gas](https://docs.arc.network/arc/concepts
 
 ## Live on Arc Testnet
 
+**Try the live demo:** [**arcsla.vercel.app**](https://arcsla.vercel.app) — open in any modern browser with MetaMask.
+
 | Contract | Address |
 | --- | --- |
 | ServiceRegistry | [`0x74635245CfF23a7F261CD5ECF72693cbc75481e4`](https://testnet.arcscan.app/address/0x74635245CfF23a7F261CD5ECF72693cbc75481e4) |
 | PayPerCall | [`0x28aa00Af89483218E6Bc036a72C4bAe8A1514BFE`](https://testnet.arcscan.app/address/0x28aa00Af89483218E6Bc036a72C4bAe8A1514BFE) |
 | USDC (native gas) | [`0x3600000000000000000000000000000000000000`](https://testnet.arcscan.app/address/0x3600000000000000000000000000000000000000) |
 
-Open [`demo/index.html`](./demo/index.html) in any modern browser with MetaMask installed to interact with the contracts live. The demo includes a live event feed, a public provider directory, and a reputation score that updates on-chain after each call.
+---
+
+## What's in the demo
+
+The demo at [arcsla.vercel.app](https://arcsla.vercel.app) is a single-file dapp (ethers.js v6, no build step) that exposes every part of the protocol through a polished interface:
+
+### On the landing page (no wallet required)
+
+- **Live network stats** — registered providers, calls on chain, slashes enforced, all read directly from the contracts
+- **"How to try this" walkthrough** — three-step guide that tells a first-time visitor exactly what to do
+- **Live activity feed** — streams the 10 most recent `CallStarted`, `ReceiptSubmitted`, `CallSlashed`, and `ProviderRegistered` events from Arc Testnet. Every row links to the exact transaction on ArcScan. Updates in real time as new events happen.
+- **Contract address bar** — all three contract addresses with one-click links to ArcScan
+- **Tab title counter** — if you switch to another tab, the title shows `(3) ArcSLA · New activity` when new events arrive so you don't miss anything
+
+### Inside the app (after connecting a wallet)
+
+- **Network stats bar** — providers count, total calls, receipts submitted, USDC slashed, with honor-rate percentage
+- **Actions panel** — register as provider, call a service, submit a receipt, or claim a timeout, each with inline tooltips explaining every field (stake, slash%, signer, etc.)
+- **Live calculator** — inside the register form, shows in real time: stake locked, loss per SLA violation, max slashes before stake is drained, revenue per 10 calls, break-even point. Adjust the inputs and watch the numbers update.
+- **Your provider panel** — full details of your registered provider: stake, price, SLA terms, pending calls, endpoint
+- **Your calls panel** — every call you've opened with live status (pending/completed/slashed) and countdown to SLA deadline
+- **All providers table** — public directory of every registered provider, sortable, clickable. Your own provider is highlighted.
+- **Leaderboard** — top 10 providers by reputation with medal emojis for the top 3, progress bars scaled to each score, and a "you" badge on your own row
+- **24-hour activity chart** — hourly bars of call volume, with slashed calls highlighted in red. Hover any bar for exact numbers.
+- **Provider detail modal** — click any provider to see their on-chain reputation score (Bayesian), honor rate, total calls, slashed count, full terms, and recent call history. Includes a "Call this provider" shortcut.
+- **Live event feed** — same feed as the landing page but full-width and higher-volume once connected
+- **Human-readable errors** — every contract revert is decoded to a plain-English message (e.g. `Already registered (one provider per address)` instead of `execution reverted`)
+- **Input validation** — client-side checks prevent you from sending obviously invalid transactions and wasting gas
+
+### Resources footer
+
+Every page includes a footer with links to Arc, Circle, testnet tools (faucet, ArcScan, thirdweb), and every piece of project documentation.
 
 ---
 
