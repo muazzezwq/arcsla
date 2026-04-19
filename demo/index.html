@@ -1271,6 +1271,184 @@
         opacity: 1;
       }
 
+      /* ---- Leaderboard ---- */
+      .leaderboard {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .lb-row {
+        display: grid;
+        grid-template-columns: 32px 1fr auto auto;
+        gap: 14px;
+        padding: 10px 14px;
+        background: var(--bg-2);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+        align-items: center;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        transition: all 0.18s ease;
+        cursor: pointer;
+      }
+
+      .lb-row:hover {
+        background: var(--bg-3);
+        border-color: var(--accent-dim);
+      }
+
+      .lb-row.is-self {
+        background: rgba(95, 227, 184, 0.06);
+        border-color: var(--accent-dim);
+      }
+
+      .lb-rank {
+        font-weight: 700;
+        color: var(--text-faint);
+        text-align: center;
+      }
+
+      .lb-row.top-1 .lb-rank { color: #fbbf24; font-size: 14px; }
+      .lb-row.top-2 .lb-rank { color: #cbd5e1; font-size: 14px; }
+      .lb-row.top-3 .lb-rank { color: #f97316; font-size: 14px; }
+
+      .lb-owner { color: var(--text); }
+      .lb-owner .calls-sub {
+        color: var(--text-faint);
+        font-size: 10px;
+        margin-left: 6px;
+      }
+
+      .lb-score {
+        font-weight: 700;
+        font-size: 14px;
+        min-width: 38px;
+        text-align: right;
+      }
+
+      .lb-bar {
+        width: 120px;
+        height: 6px;
+        background: var(--bg-3);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      .lb-bar-fill {
+        height: 100%;
+        background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+        border-radius: 3px;
+        transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .lb-bar-fill.warn { background: linear-gradient(90deg, #ca8a04, var(--warn)); }
+      .lb-bar-fill.crit { background: linear-gradient(90deg, #991b1b, var(--danger)); }
+
+      @media (max-width: 600px) {
+        .lb-row { grid-template-columns: 28px 1fr auto; }
+        .lb-bar { display: none; }
+      }
+
+      /* ---- Activity chart ---- */
+      .activity-chart {
+        display: flex;
+        align-items: flex-end;
+        gap: 3px;
+        height: 100px;
+        padding: 16px 8px 8px;
+        background: var(--bg-2);
+        border-radius: 6px;
+        border: 1px solid var(--border);
+      }
+
+      .chart-bar {
+        flex: 1;
+        min-height: 2px;
+        background: var(--accent-dim);
+        border-radius: 2px 2px 0 0;
+        position: relative;
+        transition: all 0.24s ease;
+      }
+
+      .chart-bar:hover { background: var(--accent); }
+
+      .chart-bar.has-slash {
+        background: linear-gradient(to top, var(--danger) 0%, var(--danger) var(--slash-pct,0%), var(--accent-dim) var(--slash-pct,0%), var(--accent-dim) 100%);
+      }
+
+      .chart-bar:hover::after {
+        content: attr(data-tip);
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--bg-0);
+        border: 1px solid var(--border-hi);
+        border-radius: 4px;
+        padding: 6px 10px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text);
+        white-space: nowrap;
+        z-index: 50;
+        pointer-events: none;
+      }
+
+      .chart-legend {
+        display: flex;
+        gap: 20px;
+        margin-top: 10px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-faint);
+        justify-content: flex-end;
+      }
+
+      .chart-legend-item { display: flex; align-items: center; gap: 6px; }
+      .chart-legend-swatch { width: 10px; height: 10px; border-radius: 2px; }
+
+      /* ---- Call cost calculator ---- */
+      .calc-box {
+        margin-top: 12px;
+        padding: 14px 16px;
+        background: var(--bg-0);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+
+      .calc-head {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-bottom: 10px;
+      }
+
+      .calc-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        padding: 6px 0;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        align-items: center;
+      }
+
+      .calc-row .calc-label { color: var(--text-dim); }
+      .calc-row .calc-value { font-weight: 600; color: var(--text); }
+      .calc-row .calc-value.accent { color: var(--accent); }
+      .calc-row .calc-value.danger { color: var(--danger); }
+
+      .calc-row.divider {
+        padding: 6px 0 0;
+        border-top: 1px solid var(--border);
+        margin-top: 4px;
+      }
+
+      .calc-row.highlight { font-size: 13px; padding-top: 8px; }
+
       /* ---- Footer (resources) ---- */
       .site-footer {
         margin-top: 60px;
@@ -1615,6 +1793,31 @@
                   <label>Endpoint <span class="tip" data-tip="URL where your off-chain service is reachable. Stored on-chain for discovery but not validated; callers reach this URL to actually make requests.">?</span></label>
                   <input type="text" id="regEndpoint" placeholder="https://api.example.com" />
                 </div>
+
+                <div class="calc-box">
+                  <div class="calc-head">📊 Live calculator</div>
+                  <div class="calc-row">
+                    <span class="calc-label">Stake locked</span>
+                    <span class="calc-value" id="calcStake">10.00 USDC</span>
+                  </div>
+                  <div class="calc-row">
+                    <span class="calc-label">Loss per SLA violation</span>
+                    <span class="calc-value danger" id="calcLossPerSlash">2.00 USDC (20%)</span>
+                  </div>
+                  <div class="calc-row">
+                    <span class="calc-label">Max slashes before stake drained</span>
+                    <span class="calc-value" id="calcMaxSlashes">5 slashes</span>
+                  </div>
+                  <div class="calc-row divider">
+                    <span class="calc-label">Revenue per 10 successful calls</span>
+                    <span class="calc-value accent" id="calcRevenue10">10.00 USDC</span>
+                  </div>
+                  <div class="calc-row highlight">
+                    <span class="calc-label">Break-even after N calls</span>
+                    <span class="calc-value" id="calcBreakeven">10 calls</span>
+                  </div>
+                </div>
+
                 <button class="btn btn-primary" id="btnRegister">Stake & register</button>
               </div>
             </details>
@@ -1703,6 +1906,30 @@
           </div>
           <div class="panel-body compact" id="allProvidersBox">
             <div class="empty-state">loading providers…</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Leaderboard</h2>
+            <span class="mono" style="font-size: 11px; color: var(--text-faint)">
+              top by reputation
+            </span>
+          </div>
+          <div class="panel-body compact" id="leaderboardBox">
+            <div class="empty-state">loading rankings…</div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <h2>Activity — last 24h</h2>
+            <span class="mono" style="font-size: 11px; color: var(--text-faint)">
+              hourly buckets
+            </span>
+          </div>
+          <div class="panel-body compact" id="activityChartBox">
+            <div class="empty-state">loading activity…</div>
           </div>
         </section>
 
@@ -1842,6 +2069,21 @@
         allProviders: [], // public directory
         networkStats: null, // aggregate metrics
       };
+
+      // -------- Tab title counter (unseen events) --------
+      const titleBase = "ArcSLA · Arc Testnet";
+      let unseenCount = 0;
+      function bumpUnseen() {
+        if (!document.hidden) return;
+        unseenCount++;
+        document.title = `(${unseenCount}) ${titleBase} · New activity`;
+      }
+      document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+          unseenCount = 0;
+          document.title = titleBase;
+        }
+      });
 
       // -------- UI helpers --------
       const $ = (id) => document.getElementById(id);
@@ -2020,6 +2262,8 @@
           refreshHero(),
           refreshAllProviders(),
           refreshNetworkStats(),
+          refreshLeaderboard(),
+          refreshActivityChart(),
         ]);
       }
 
@@ -2215,6 +2459,131 @@
           $("heroSlashes").textContent = state.networkStats.slashed.toString();
         } catch (e) {
           console.error("refreshNetworkStats failed:", e);
+        }
+      }
+
+      // -------- Leaderboard (top providers by reputation) --------
+      async function refreshLeaderboard() {
+        try {
+          const providers = state.allProviders ?? [];
+          if (providers.length === 0) {
+            $("leaderboardBox").innerHTML = `<div class="empty-state">no providers yet</div>`;
+            return;
+          }
+          // Sort by reputation desc, then by stake desc as tiebreaker
+          const ranked = [...providers]
+            .sort((a, b) => {
+              const rep = (b.reputation ?? 0) - (a.reputation ?? 0);
+              if (rep !== 0) return rep;
+              return Number(b.stake - a.stake);
+            })
+            .slice(0, 10);
+
+          const myAddr = state.address?.toLowerCase();
+          const rows = ranked
+            .map((p, i) => {
+              const rank = i + 1;
+              const rep = p.reputation ?? 0;
+              const isSelf = myAddr && p.owner?.toLowerCase() === myAddr;
+              const topClass = rank <= 3 ? ` top-${rank}` : "";
+              const selfClass = isSelf ? " is-self" : "";
+              const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank;
+              const fillClass = rep >= 80 ? "" : rep >= 50 ? "warn" : "crit";
+              const callsTotal = (state.networkStats?.receipts ?? 0);
+              return `
+                <div class="lb-row${topClass}${selfClass}" data-pid="${p.id}">
+                  <div class="lb-rank">${medal}</div>
+                  <div class="lb-owner">
+                    <span>#${p.id} · ${short(p.owner, 4)}</span>
+                    ${isSelf ? `<span class="self-tag">you</span>` : ""}
+                  </div>
+                  <div class="lb-bar"><div class="lb-bar-fill ${fillClass}" style="width: ${rep}%"></div></div>
+                  <div class="lb-score">${rep}</div>
+                </div>
+              `;
+            })
+            .join("");
+
+          $("leaderboardBox").innerHTML = `<div class="leaderboard">${rows}</div>`;
+
+          $("leaderboardBox")
+            .querySelectorAll(".lb-row[data-pid]")
+            .forEach((row) => {
+              row.addEventListener("click", () =>
+                openProviderModal(Number(row.dataset.pid)),
+              );
+            });
+        } catch (e) {
+          console.error("refreshLeaderboard failed:", e);
+        }
+      }
+
+      // -------- Activity chart (hourly buckets, last 24h) --------
+      async function refreshActivityChart() {
+        try {
+          // Reuse event log queries we already have from refreshNetworkStats
+          const [startedLogs, slashedLogs] = await Promise.all([
+            safeQuery(state.payPerCall, "CallStarted"),
+            safeQuery(state.payPerCall, "CallSlashed"),
+          ]);
+
+          // Get current block and estimate timestamps backwards.
+          // Arc testnet has ~2s block time; last 24h ~= 43200 blocks.
+          const provider = state.payPerCall.runner.provider;
+          const latestBlock = await provider.getBlockNumber();
+          const latestBlockInfo = await provider.getBlock(latestBlock);
+          const now = latestBlockInfo ? Number(latestBlockInfo.timestamp) : Math.floor(Date.now() / 1000);
+          const cutoff = now - 24 * 3600;
+          const BLOCK_TIME_SEC = 2;
+
+          // For each log, estimate its timestamp from (latestBlock - log.blockNumber) * blockTime
+          // This avoids N getBlock() calls which are expensive.
+          const ts = (log) => now - (latestBlock - log.blockNumber) * BLOCK_TIME_SEC;
+
+          // Bucket into 24 hourly slots
+          const buckets = Array.from({ length: 24 }, () => ({ calls: 0, slashes: 0 }));
+          for (const log of startedLogs) {
+            const t = ts(log);
+            if (t < cutoff) continue;
+            const idx = Math.min(23, Math.floor((t - cutoff) / 3600));
+            buckets[idx].calls++;
+          }
+          for (const log of slashedLogs) {
+            const t = ts(log);
+            if (t < cutoff) continue;
+            const idx = Math.min(23, Math.floor((t - cutoff) / 3600));
+            buckets[idx].slashes++;
+          }
+
+          const maxCount = Math.max(1, ...buckets.map((b) => b.calls));
+          const bars = buckets
+            .map((b, i) => {
+              const height = (b.calls / maxCount) * 100;
+              const slashPct = b.calls > 0 ? (b.slashes / b.calls) * 100 : 0;
+              const hourAgo = 23 - i;
+              const tip = b.calls === 0
+                ? `${hourAgo}h ago · no calls`
+                : `${hourAgo}h ago · ${b.calls} call${b.calls === 1 ? "" : "s"}${b.slashes ? ` · ${b.slashes} slashed` : ""}`;
+              const slashClass = b.slashes > 0 ? "has-slash" : "";
+              return `<div class="chart-bar ${slashClass}" style="height: ${Math.max(height, 2)}%; --slash-pct: ${slashPct}%" data-tip="${tip}"></div>`;
+            })
+            .join("");
+
+          $("activityChartBox").innerHTML = `
+            <div class="activity-chart">${bars}</div>
+            <div class="chart-legend">
+              <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background: var(--accent-dim)"></div>
+                <span>calls</span>
+              </div>
+              <div class="chart-legend-item">
+                <div class="chart-legend-swatch" style="background: var(--danger)"></div>
+                <span>slashes</span>
+              </div>
+            </div>
+          `;
+        } catch (e) {
+          console.error("refreshActivityChart failed:", e);
         }
       }
 
@@ -2686,7 +3055,7 @@
           }
           refreshBalance();
           refreshProvider();
-          refreshNetworkStats();
+          refreshNetworkStats(); refreshLeaderboard(); refreshActivityChart(); bumpUnseen();
           refreshAllProviders();
         });
 
@@ -2705,7 +3074,7 @@
           }
           refreshBalance();
           refreshProvider();
-          refreshNetworkStats();
+          refreshNetworkStats(); refreshLeaderboard(); refreshActivityChart(); bumpUnseen();
           refreshAllProviders();
         });
 
@@ -2724,7 +3093,7 @@
           }
           refreshBalance();
           refreshProvider();
-          refreshNetworkStats();
+          refreshNetworkStats(); refreshLeaderboard(); refreshActivityChart(); bumpUnseen();
           refreshAllProviders();
         });
 
@@ -2738,7 +3107,7 @@
             body: `#${providerId} registered by <span class="hi">${short(owner, 4)}</span> · ${ethers.formatUnits(stake, state.usdcDecimals)} USDC staked`,
           });
           refreshHero();
-          refreshNetworkStats();
+          refreshNetworkStats(); refreshLeaderboard(); refreshActivityChart(); bumpUnseen();
           refreshAllProviders();
         });
 
@@ -2753,6 +3122,8 @@
             body: `#${providerId} reputation updated · <span class="hi">${completed}</span> completed, <span class="hi">${slashed}</span> slashed`,
           });
           refreshAllProviders();
+          refreshLeaderboard();
+          bumpUnseen();
         });
       }
 
@@ -2876,6 +3247,32 @@
       $("btnTimeout").addEventListener("click", doTimeout);
       $("btnRefreshProvider").addEventListener("click", refreshAll);
 
+      // -------- Register form: live calculator --------
+      function updateCalculator() {
+        const stake = parseFloat($("regStake").value || "10") || 0;
+        const price = parseFloat($("regPrice").value || "1") || 0;
+        const slashPct = parseFloat($("regSlashPct").value || "20") || 0;
+
+        const lossPerSlash = (stake * slashPct) / 100;
+        const maxSlashes = lossPerSlash > 0 ? Math.floor(stake / lossPerSlash) : 0;
+        const revenue10 = price * 10;
+        const breakeven = price > 0 ? Math.ceil(stake / price) : 0;
+
+        $("calcStake").textContent = `${stake.toFixed(2)} USDC`;
+        $("calcLossPerSlash").textContent = `${lossPerSlash.toFixed(2)} USDC (${slashPct}%)`;
+        $("calcMaxSlashes").textContent = `${maxSlashes} slash${maxSlashes === 1 ? "" : "es"}`;
+        $("calcRevenue10").textContent = `${revenue10.toFixed(2)} USDC`;
+        $("calcBreakeven").textContent = `${breakeven} call${breakeven === 1 ? "" : "s"}`;
+      }
+
+      // Wire calc inputs
+      ["regStake", "regPrice", "regSlashPct"].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("input", updateCalculator);
+      });
+      // Initial render
+      updateCalculator();
+
       // -------- Boot: read-only stats + landing feed (no wallet needed) --------
       // Populate the hero numbers and the live-activity panel on the disconnected
       // view by hitting the RPC directly. Uses a JsonRpcProvider so nothing
@@ -2987,6 +3384,7 @@
             feedEl.prepend(row);
             // Cap at 10 rows
             while (feedEl.children.length > 10) feedEl.removeChild(feedEl.lastChild);
+            bumpUnseen();
           };
 
           payPerCallRo.on("CallStarted", (callId, providerId, caller, amount, _rh, _dl, ev) => {
