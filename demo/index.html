@@ -904,10 +904,71 @@
       .feed-link {
         color: var(--text-faint);
         text-decoration: none;
+        padding: 2px 6px;
+        border-radius: 3px;
+        background: var(--bg-2);
+        font-size: 10px;
+        transition: all 0.12s ease;
       }
 
       .feed-link:hover {
         color: var(--accent);
+        background: var(--accent-bg);
+      }
+
+      /* ---- Landing feed (pre-connect) ---- */
+      .landing-feed-box {
+        margin: 40px auto 0;
+        max-width: 720px;
+        background: var(--bg-1);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        text-align: left;
+      }
+
+      .landing-feed-box .lfb-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .landing-feed-box .lfb-head h3 {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text);
+      }
+
+      .landing-feed-box .lfb-head .pulse {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-faint);
+      }
+
+      .landing-feed-box .pulse-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 8px var(--accent);
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(0.85); }
+      }
+
+      .landing-feed-box .feed {
+        max-height: 280px;
       }
 
       /* ---- Toasts ---- */
@@ -1068,6 +1129,252 @@
         margin-right: 10px;
       }
 
+      /* ---- How to try this guide ---- */
+      .how-to {
+        margin: 40px auto 0;
+        max-width: 720px;
+        padding: 24px 28px;
+        background: var(--bg-1);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        text-align: left;
+      }
+
+      .how-to h3 {
+        margin: 0 0 18px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+
+      .how-to ol {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+      }
+
+      .how-to li {
+        display: grid;
+        grid-template-columns: 28px 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+
+      .how-to .step-num {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: var(--accent-bg);
+        color: var(--accent);
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .how-to .step-body {
+        font-size: 13px;
+        line-height: 1.55;
+        color: var(--text-dim);
+        padding-top: 3px;
+      }
+
+      .how-to .step-body strong {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      .how-to .step-body a {
+        color: var(--accent);
+        text-decoration: none;
+        border-bottom: 1px dashed var(--accent-dim);
+      }
+
+      .how-to .step-body a:hover {
+        border-bottom-style: solid;
+      }
+
+      .how-to .step-body .alt-line {
+        color: var(--text-faint);
+        font-size: 12px;
+        margin-top: 4px;
+      }
+
+      .how-to .hint-line {
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+        font-size: 12px;
+        color: var(--text-faint);
+      }
+
+      .how-to .hint-line a {
+        color: var(--text-dim);
+      }
+
+      /* ---- Inline tooltip ---- */
+      .tip {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--bg-3);
+        color: var(--text-faint);
+        font-family: var(--font-mono);
+        font-size: 10px;
+        line-height: 14px;
+        text-align: center;
+        margin-left: 6px;
+        cursor: help;
+        position: relative;
+        user-select: none;
+      }
+
+      .tip:hover {
+        background: var(--accent-bg);
+        color: var(--accent);
+      }
+
+      .tip::after {
+        content: attr(data-tip);
+        position: absolute;
+        left: 50%;
+        bottom: calc(100% + 8px);
+        transform: translateX(-50%);
+        background: var(--bg-0);
+        border: 1px solid var(--border-hi);
+        border-radius: 4px;
+        padding: 8px 12px;
+        font-family: var(--font-body);
+        font-size: 11px;
+        font-weight: normal;
+        line-height: 1.45;
+        color: var(--text);
+        white-space: normal;
+        width: 220px;
+        text-align: left;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.12s ease;
+        z-index: 100;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .tip:hover::after {
+        opacity: 1;
+      }
+
+      /* ---- Footer (resources) ---- */
+      .site-footer {
+        margin-top: 60px;
+        padding: 40px 28px 48px;
+        border-top: 1px solid var(--border);
+        background: var(--bg-0);
+      }
+
+      .site-footer-inner {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      .site-footer h4 {
+        margin: 0 0 14px;
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+      }
+
+      .footer-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 40px;
+        margin-bottom: 32px;
+      }
+
+      @media (max-width: 800px) {
+        .footer-grid {
+          grid-template-columns: 1fr;
+          gap: 28px;
+        }
+      }
+
+      .footer-col ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .footer-col a {
+        color: var(--text-dim);
+        text-decoration: none;
+        font-size: 13px;
+        display: inline-block;
+        transition: color 0.12s ease;
+      }
+
+      .footer-col a:hover {
+        color: var(--accent);
+      }
+
+      .footer-col .resource-desc {
+        color: var(--text-faint);
+        font-size: 11px;
+        margin-left: 6px;
+      }
+
+      .footer-bottom {
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-faint);
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .footer-bottom .brand-lockup {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .footer-bottom .mini-mark {
+        width: 18px;
+        height: 18px;
+        border-radius: 3px;
+        background: var(--accent);
+        color: var(--bg-0);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 11px;
+      }
+
+      .footer-bottom a {
+        color: var(--text-dim);
+        text-decoration: none;
+      }
+
+      .footer-bottom a:hover {
+        color: var(--accent);
+      }
+
       .hidden {
         display: none !important;
       }
@@ -1156,6 +1463,70 @@
           </div>
         </div>
 
+        <div class="how-to">
+          <h3>How to try this</h3>
+          <ol>
+            <li>
+              <span class="step-num">1</span>
+              <div class="step-body">
+                <strong>Get testnet USDC.</strong> Visit
+                <a href="https://faucet.circle.com/" target="_blank" rel="noreferrer"
+                  >faucet.circle.com</a
+                >, select Arc Testnet, and paste your wallet address. You need USDC because on
+                Arc it is also the gas token — one asset covers both.
+              </div>
+            </li>
+            <li>
+              <span class="step-num">2</span>
+              <div class="step-body">
+                <strong>Connect your wallet.</strong> Click the button above. MetaMask will
+                prompt you to add the Arc Testnet network automatically. Approve the switch.
+              </div>
+            </li>
+            <li>
+              <span class="step-num">3</span>
+              <div class="step-body">
+                <strong>Try one of two flows:</strong>
+                <div class="alt-line">
+                  ▸ <strong>Be a caller</strong> — pick Provider #1, pay 1 USDC, receive a signed
+                  on-chain receipt. If the provider misses the deadline, claim a refund plus a
+                  slice of their stake.
+                </div>
+                <div class="alt-line">
+                  ▸ <strong>Be a provider</strong> — stake 10 USDC, set your SLA, and wait for
+                  calls. Every fulfilled call bumps your on-chain reputation.
+                </div>
+              </div>
+            </li>
+          </ol>
+          <div class="hint-line">
+            Want the full picture? Read the
+            <a href="https://github.com/muazzezwq/arcsla" target="_blank" rel="noreferrer"
+              >README on GitHub</a
+            >
+            or the
+            <a
+              href="https://github.com/muazzezwq/arcsla/blob/main/ARCHITECTURE.md"
+              target="_blank"
+              rel="noreferrer"
+              >architecture deep-dive</a
+            >.
+          </div>
+        </div>
+
+        <div class="landing-feed-box">
+          <div class="lfb-head">
+            <h3>Live activity</h3>
+            <div class="pulse">
+              <span class="pulse-dot"></span>
+              <span>streaming from arc testnet</span>
+            </div>
+          </div>
+          <div class="feed" id="landingFeed">
+            <div class="empty-state">loading recent activity…</div>
+          </div>
+        </div>
+
         <div class="contract-addresses">
           <div>
             <span class="label">ServiceRegistry</span>
@@ -1213,7 +1584,7 @@
               <summary>Register as provider</summary>
               <div class="action-body">
                 <div class="field">
-                  <label>Signer address</label>
+                  <label>Signer address <span class="tip" data-tip="The address whose key will sign each receipt you deliver. Keep the owner (payout) key cold and the signer key hot for safety. Leave blank to use your current address.">?</span></label>
                   <input type="text" id="regSigner" placeholder="0x… (defaults to your address)" />
                   <div class="hint">
                     The address that will sign receipts. For testing, leave blank — your own
@@ -1222,26 +1593,26 @@
                 </div>
                 <div class="field-row">
                   <div class="field">
-                    <label>Stake (USDC)</label>
+                    <label>Stake (USDC) <span class="tip" data-tip="USDC you lock as collateral. A slice is paid out to any caller who successfully claims a timeout against you. Minimum is 10 USDC.">?</span></label>
                     <input type="text" id="regStake" placeholder="10" />
                   </div>
                   <div class="field">
-                    <label>Price per call (USDC)</label>
+                    <label>Price per call (USDC) <span class="tip" data-tip="What each caller pays to invoke your service. Set it high enough that spam becomes unprofitable for attackers (spam cost must exceed potential slash reward).">?</span></label>
                     <input type="text" id="regPrice" placeholder="1" />
                   </div>
                 </div>
                 <div class="field-row">
                   <div class="field">
-                    <label>Max response (sec)</label>
+                    <label>Max response (sec) <span class="tip" data-tip="How long you have between a call opening and submitting a signed receipt. Miss this deadline and anyone can claim a timeout against you.">?</span></label>
                     <input type="text" id="regMaxResp" placeholder="30" />
                   </div>
                   <div class="field">
-                    <label>Slash %</label>
+                    <label>Slash % <span class="tip" data-tip="Percentage of your stake paid to the caller on a timeout. Higher values build trust but raise your risk. 10–30% is typical.">?</span></label>
                     <input type="text" id="regSlashPct" placeholder="20" />
                   </div>
                 </div>
                 <div class="field">
-                  <label>Endpoint</label>
+                  <label>Endpoint <span class="tip" data-tip="URL where your off-chain service is reachable. Stored on-chain for discovery but not validated; callers reach this URL to actually make requests.">?</span></label>
                   <input type="text" id="regEndpoint" placeholder="https://api.example.com" />
                 </div>
                 <button class="btn btn-primary" id="btnRegister">Stake & register</button>
@@ -1252,14 +1623,14 @@
               <summary>Call a service</summary>
               <div class="action-body">
                 <div class="field">
-                  <label>Provider ID</label>
+                  <label>Provider ID <span class="tip" data-tip="Numeric ID of the registered provider you want to call. Provider #1 is usually the demo provider. See the All Providers table below the fold.">?</span></label>
                   <input type="text" id="callProviderId" placeholder="1" />
                   <div class="hint" id="callProviderHint">
                     Enter a provider id to fetch SLA terms.
                   </div>
                 </div>
                 <div class="field">
-                  <label>Request payload</label>
+                  <label>Request payload <span class="tip" data-tip="Any string describing what you want from the provider. On-chain we only store its keccak256 hash, so providers can't read your request by just watching the chain.">?</span></label>
                   <textarea id="callPayload" rows="2" placeholder="any string — will be hashed on-chain">ping</textarea>
                 </div>
                 <button class="btn btn-primary" id="btnCall">Approve & call</button>
@@ -1270,11 +1641,11 @@
               <summary>Submit receipt (provider)</summary>
               <div class="action-body">
                 <div class="field">
-                  <label>Call ID (bytes32)</label>
+                  <label>Call ID (bytes32) <span class="tip" data-tip="The unique ID assigned when the caller opened this call. If you just opened a call above, this field was auto-filled for you.">?</span></label>
                   <input type="text" id="rcpCallId" placeholder="0x…" />
                 </div>
                 <div class="field">
-                  <label>Response payload</label>
+                  <label>Response payload <span class="tip" data-tip="The response you delivered off-chain. It gets hashed and the hash is signed with your provider's signer key (EIP-191). On-chain stores only the hash — your response content stays off-chain.">?</span></label>
                   <textarea id="rcpPayload" rows="2" placeholder="your service's response">pong</textarea>
                   <div class="hint">
                     Response is hashed and signed with EIP-191. On-chain stores only the hash.
@@ -1288,7 +1659,7 @@
               <summary>Claim timeout (caller)</summary>
               <div class="action-body">
                 <div class="field">
-                  <label>Call ID (bytes32)</label>
+                  <label>Call ID (bytes32) <span class="tip" data-tip="ID of a call you opened that passed its SLA deadline without a receipt. Claiming refunds your payment and slashes a percentage of the provider's stake to you.">?</span></label>
                   <input type="text" id="toCallId" placeholder="0x…" />
                   <div class="hint">
                     Only works after the SLA deadline has passed. Refunds your payment and slashes
@@ -1350,6 +1721,56 @@
         </section>
       </div>
     </main>
+
+    <!-- ============================================================ -->
+    <!-- Footer — always visible on both views                        -->
+    <!-- ============================================================ -->
+    <footer class="site-footer">
+      <div class="site-footer-inner">
+        <div class="footer-grid">
+          <div class="footer-col">
+            <h4>Arc &amp; Circle</h4>
+            <ul>
+              <li><a href="https://www.arc.network/" target="_blank" rel="noreferrer">Arc Network</a></li>
+              <li><a href="https://docs.arc.network/arc/concepts/welcome-to-arc" target="_blank" rel="noreferrer">Arc documentation</a></li>
+              <li><a href="https://developers.circle.com/" target="_blank" rel="noreferrer">Circle Developers</a></li>
+              <li><a href="https://console.circle.com/signin" target="_blank" rel="noreferrer">Circle Console</a></li>
+              <li><a href="https://www.circle.com/" target="_blank" rel="noreferrer">Circle</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Testnet tools</h4>
+            <ul>
+              <li><a href="https://faucet.circle.com/" target="_blank" rel="noreferrer">Arc Testnet Faucet</a></li>
+              <li><a href="https://testnet.arcscan.app/" target="_blank" rel="noreferrer">ArcScan Testnet</a></li>
+              <li><a href="https://thirdweb.com/arc-testnet" target="_blank" rel="noreferrer">thirdweb Arc Testnet</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h4>Project</h4>
+            <ul>
+              <li><a href="https://github.com/muazzezwq/arcsla" target="_blank" rel="noreferrer">GitHub repo</a></li>
+              <li><a href="https://github.com/muazzezwq/arcsla/blob/main/README.md" target="_blank" rel="noreferrer">README</a></li>
+              <li><a href="https://github.com/muazzezwq/arcsla/blob/main/ARCHITECTURE.md" target="_blank" rel="noreferrer">Architecture</a></li>
+              <li><a href="https://github.com/muazzezwq/arcsla/blob/main/SECURITY.md" target="_blank" rel="noreferrer">Security</a></li>
+              <li><a href="https://github.com/muazzezwq/arcsla/blob/main/DEPLOY.md" target="_blank" rel="noreferrer">Deploy guide</a></li>
+            </ul>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <div class="brand-lockup">
+            <div class="mini-mark">A</div>
+            <span>ArcSLA · built on Arc Testnet</span>
+          </div>
+          <div>
+            <a href="https://testnet.arcscan.app/address/0x74635245CfF23a7F261CD5ECF72693cbc75481e4" target="_blank" rel="noreferrer">Registry</a>
+            &nbsp;·&nbsp;
+            <a href="https://testnet.arcscan.app/address/0x28aa00Af89483218E6Bc036a72C4bAe8A1514BFE" target="_blank" rel="noreferrer">PayPerCall</a>
+            &nbsp;·&nbsp; MIT License
+          </div>
+        </div>
+      </div>
+    </footer>
 
     <div class="toasts" id="toasts"></div>
 
@@ -2343,7 +2764,7 @@
           <span class="feed-time">${time}</span>
           <span class="feed-tag ${tag}">${tagText}</span>
           <span class="feed-body">${body}</span>
-          ${txHash ? `<a class="feed-link" href="${txLink(txHash)}" target="_blank" rel="noreferrer">${short(txHash, 4)} ↗</a>` : ""}
+          ${txHash ? `<a class="feed-link" href="${txLink(txHash)}" target="_blank" rel="noreferrer" title="${txHash} — click to open in Arcscan">${short(txHash, 4)} ↗</a>` : ""}
         `;
         $("feed").prepend(row);
       }
@@ -2455,9 +2876,10 @@
       $("btnTimeout").addEventListener("click", doTimeout);
       $("btnRefreshProvider").addEventListener("click", refreshAll);
 
-      // -------- Boot: read-only stats (no wallet needed) --------
-      // Populate the hero numbers on the disconnected view by hitting the RPC
-      // directly. Uses a JsonRpcProvider so nothing requires MetaMask.
+      // -------- Boot: read-only stats + landing feed (no wallet needed) --------
+      // Populate the hero numbers and the live-activity panel on the disconnected
+      // view by hitting the RPC directly. Uses a JsonRpcProvider so nothing
+      // requires MetaMask.
       (async () => {
         try {
           const ro = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
@@ -2467,17 +2889,148 @@
           const latest = await ro.getBlockNumber();
           const from = Math.max(0, latest - LOG_SCAN_BLOCKS);
 
-          const [next, startedLogs, slashedLogs] = await Promise.all([
+          const [next, startedLogs, receiptLogs, slashedLogs, regLogs] = await Promise.all([
             registryRo.nextProviderId(),
             scanRange(payPerCallRo, "CallStarted", from, latest, CHUNK_SIZE).catch(() => []),
+            scanRange(payPerCallRo, "ReceiptSubmitted", from, latest, CHUNK_SIZE).catch(() => []),
             scanRange(payPerCallRo, "CallSlashed", from, latest, CHUNK_SIZE).catch(() => []),
+            scanRange(registryRo, "ProviderRegistered", from, latest, CHUNK_SIZE).catch(() => []),
           ]);
 
           $("heroProviders").textContent = (Number(next) - 1).toString();
           $("heroCalls").textContent = startedLogs.length.toString();
           $("heroSlashes").textContent = slashedLogs.length.toString();
+
+          // Merge all events into one chronological list, newest first
+          const events = [];
+          for (const l of regLogs) {
+            events.push({
+              tag: "registered",
+              tagText: "provider",
+              blockNumber: l.blockNumber,
+              txHash: l.transactionHash,
+              body: `#${l.args.providerId} registered by <span class="hi">${short(l.args.owner, 4)}</span> · ${ethers.formatUnits(l.args.stake, 6)} USDC staked`,
+            });
+          }
+          for (const l of startedLogs) {
+            events.push({
+              tag: "started",
+              tagText: "call opened",
+              blockNumber: l.blockNumber,
+              txHash: l.transactionHash,
+              body: `<span class="hi">${short(l.args.caller, 4)}</span> → provider #${l.args.providerId} · ${ethers.formatUnits(l.args.amount, 6)} USDC escrowed`,
+            });
+          }
+          for (const l of receiptLogs) {
+            events.push({
+              tag: "submitted",
+              tagText: "receipt",
+              blockNumber: l.blockNumber,
+              txHash: l.transactionHash,
+              body: `receipt signed for call <span class="hi">${short(l.args.callId, 6)}</span>`,
+            });
+          }
+          for (const l of slashedLogs) {
+            events.push({
+              tag: "slashed",
+              tagText: "slashed",
+              blockNumber: l.blockNumber,
+              txHash: l.transactionHash,
+              body: `call <span class="hi">${short(l.args.callId, 6)}</span> timed out · refund ${ethers.formatUnits(l.args.refunded, 6)} + slash ${ethers.formatUnits(l.args.slashed, 6)} USDC`,
+            });
+          }
+
+          // Sort newest first by block number, keep most recent 10
+          events.sort((a, b) => b.blockNumber - a.blockNumber);
+          const recent = events.slice(0, 10);
+
+          const feed = $("landingFeed");
+          if (recent.length === 0) {
+            feed.innerHTML = `<div class="empty-state">no activity yet — be the first</div>`;
+          } else {
+            feed.innerHTML = "";
+            for (const ev of recent) {
+              const row = document.createElement("div");
+              row.className = "feed-row";
+              row.innerHTML = `
+                <span class="feed-time">blk ${ev.blockNumber}</span>
+                <span class="feed-tag ${ev.tag}">${ev.tagText}</span>
+                <span class="feed-body">${ev.body}</span>
+                <a class="feed-link" href="${txLink(ev.txHash)}" target="_blank" rel="noreferrer">${short(ev.txHash, 4)} ↗</a>
+              `;
+              feed.appendChild(row);
+            }
+          }
+
+          // Subscribe to new events on the landing feed so it updates in real time
+          // while the user is still on the disconnected view. We dedupe against
+          // the main connected-view feed using the seenEvents set so events don't
+          // get double-added after the user connects.
+          const landingDedupe = new Set();
+          const prependLanding = ({ tag, tagText, body, txHash, blockNumber }) => {
+            if (!txHash) return;
+            if (landingDedupe.has(txHash)) return;
+            landingDedupe.add(txHash);
+            const feedEl = $("landingFeed");
+            if (!feedEl) return;
+            // Clear empty state
+            const empty = feedEl.querySelector(".empty-state");
+            if (empty) empty.remove();
+            const row = document.createElement("div");
+            row.className = "feed-row";
+            row.innerHTML = `
+              <span class="feed-time">blk ${blockNumber ?? "—"}</span>
+              <span class="feed-tag ${tag}">${tagText}</span>
+              <span class="feed-body">${body}</span>
+              <a class="feed-link" href="${txLink(txHash)}" target="_blank" rel="noreferrer">${short(txHash, 4)} ↗</a>
+            `;
+            feedEl.prepend(row);
+            // Cap at 10 rows
+            while (feedEl.children.length > 10) feedEl.removeChild(feedEl.lastChild);
+          };
+
+          payPerCallRo.on("CallStarted", (callId, providerId, caller, amount, _rh, _dl, ev) => {
+            prependLanding({
+              tag: "started",
+              tagText: "call opened",
+              blockNumber: ev.log?.blockNumber,
+              txHash: ev.log?.transactionHash,
+              body: `<span class="hi">${short(caller, 4)}</span> → provider #${providerId} · ${ethers.formatUnits(amount, 6)} USDC escrowed`,
+            });
+          });
+          payPerCallRo.on("ReceiptSubmitted", (callId, _rh, ev) => {
+            prependLanding({
+              tag: "submitted",
+              tagText: "receipt",
+              blockNumber: ev.log?.blockNumber,
+              txHash: ev.log?.transactionHash,
+              body: `receipt signed for call <span class="hi">${short(callId, 6)}</span>`,
+            });
+          });
+          payPerCallRo.on("CallSlashed", (callId, refunded, slashed, ev) => {
+            prependLanding({
+              tag: "slashed",
+              tagText: "slashed",
+              blockNumber: ev.log?.blockNumber,
+              txHash: ev.log?.transactionHash,
+              body: `call <span class="hi">${short(callId, 6)}</span> timed out · refund ${ethers.formatUnits(refunded, 6)} + slash ${ethers.formatUnits(slashed, 6)} USDC`,
+            });
+          });
+          registryRo.on("ProviderRegistered", (providerId, owner, _s, stake, _p, _m, _b, _e, ev) => {
+            prependLanding({
+              tag: "registered",
+              tagText: "provider",
+              blockNumber: ev.log?.blockNumber,
+              txHash: ev.log?.transactionHash,
+              body: `#${providerId} registered by <span class="hi">${short(owner, 4)}</span> · ${ethers.formatUnits(stake, 6)} USDC staked`,
+            });
+          });
         } catch (e) {
           console.warn("boot stats failed:", e);
+          const feed = $("landingFeed");
+          if (feed) {
+            feed.innerHTML = `<div class="empty-state">couldn't reach arc testnet — try again in a moment</div>`;
+          }
         }
       })();
     </script>
