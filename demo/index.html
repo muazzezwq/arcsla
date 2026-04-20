@@ -1667,6 +1667,23 @@
       .scenario-step .amount.pos { color: var(--accent); }
       .scenario-step .amount.neg { color: var(--danger); }
 
+      /* ---- Info box (inline explainer in forms) ---- */
+      .info-box {
+        padding: 12px 14px;
+        margin: 4px 0 12px;
+        background: var(--info-bg);
+        border: 1px solid rgba(37, 99, 235, 0.2);
+        border-radius: 8px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text-dim);
+      }
+
+      .info-box strong {
+        color: var(--info);
+        font-weight: 600;
+      }
+
       /* ---- Footer (resources) ---- */
       .site-footer {
         margin-top: 60px;
@@ -2517,6 +2534,9 @@
                   <div class="hint">
                     Response is hashed and signed with EIP-191. On-chain stores only the hash.
                   </div>
+                </div>
+                <div class="info-box">
+                  <strong>Heads up:</strong> when MetaMask opens the signature prompt, the "Message" field will show unreadable characters. This is expected — you're signing raw bytes (the keccak256 of callId + responseHash), not a human-readable string. EIP-712 typed-data signing is planned for v2.
                 </div>
                 <button class="btn btn-primary" id="btnReceipt">Sign & submit</button>
               </div>
