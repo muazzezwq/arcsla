@@ -492,10 +492,11 @@
 
       .stat-cell .stat-value {
         font-family: var(--font-mono);
-        font-size: 20px;
-        font-weight: 600;
+        font-size: 28px;
+        font-weight: 700;
         color: var(--text);
-        line-height: 1;
+        line-height: 1.1;
+        letter-spacing: -0.02em;
       }
 
       .stat-cell .stat-value.accent {
@@ -510,7 +511,8 @@
         font-family: var(--font-mono);
         font-size: 11px;
         color: var(--text-faint);
-        margin-top: 4px;
+        margin-top: 6px;
+        line-height: 1.4;
       }
 
       /* ---- Provider list table ---- */
@@ -2673,7 +2675,7 @@
       // -------- Config --------
       const CONFIG = {
         chainId: 5042002,
-        chainIdHex: "0x4CE152",
+        chainIdHex: "0x4CEF52",
         chainName: "Arc Testnet",
         rpcUrl: "https://rpc.testnet.arc.network",
         explorerBase: "https://testnet.arcscan.app",
@@ -3123,15 +3125,20 @@
       // -------- Network stats (on-chain aggregate) --------
       async function refreshNetworkStats() {
         try {
-          const [startedLogs, receiptLogs, slashedLogs, providerLogs] = await Promise.all([
+          // Providers count comes directly from contract state (survives chain age).
+          // Calls/receipts/slashes still use event scan since the contract doesn't
+          // expose counters for those (would cost storage gas per tx).
+          const [nextId, startedLogs, receiptLogs, slashedLogs] = await Promise.all([
+            state.registry.nextProviderId().catch(() => 1n),
             safeQuery(state.payPerCall, "CallStarted"),
             safeQuery(state.payPerCall, "ReceiptSubmitted"),
             safeQuery(state.payPerCall, "CallSlashed"),
-            safeQuery(state.registry, "ProviderRegistered"),
           ]);
 
+          const providersCount = Math.max(0, Number(nextId) - 1);
+
           state.networkStats = {
-            providers: providerLogs.length,
+            providers: providersCount,
             calls: startedLogs.length,
             receipts: receiptLogs.length,
             slashed: slashedLogs.length,
@@ -4206,4 +4213,5 @@
       })();
     </script>
   </body>
-</html>
+                                                                                                                  </html>
+                      
