@@ -2921,15 +2921,17 @@
 
       // -------- Refresh data --------
       async function refreshAll() {
+        // First wave: everything independent can run in parallel
         await Promise.all([
           refreshBalance(),
           refreshProvider(),
           refreshHero(),
           refreshAllProviders(),
           refreshNetworkStats(),
-          refreshLeaderboard(),
           refreshActivityChart(),
         ]);
+        // Second wave: depends on state.allProviders being populated
+        await refreshLeaderboard();
       }
 
       async function refreshBalance() {
@@ -3833,10 +3835,8 @@
             $("toCallId").value = callId;
             renderCalls();
           }
-          refreshBalance();
-          refreshProvider();
-          refreshNetworkStats(); refreshLeaderboard(); refreshActivityChart(); bumpUnseen();
-          refreshAllProviders();
+          refreshAll();
+          bumpUnseen();
         });
 
         state.payPerCall.on("ReceiptSubmitted", (callId, responseHash, ev) => {
@@ -3852,10 +3852,8 @@
             state.myCalls.get(callId).status = 2;
             renderCalls();
           }
-          refreshBalance();
-          refreshProvider();
-          refreshNetworkStats(); refreshLeaderboard(); refreshActivityChart(); bumpUnseen();
-          refreshAllProviders();
+          refreshAll();
+          bumpUnseen();
         });
 
         state.payPerCall.on("CallSlashed", (callId, refunded, slashed, ev) => {
@@ -3871,10 +3869,8 @@
             state.myCalls.get(callId).status = 3;
             renderCalls();
           }
-          refreshBalance();
-          refreshProvider();
-          refreshNetworkStats(); refreshLeaderboard(); refreshActivityChart(); bumpUnseen();
-          refreshAllProviders();
+          refreshAll();
+          bumpUnseen();
         });
 
         state.registry.on("ProviderRegistered", (providerId, owner, _signer, stake, _price, _mrt, _bps, endpoint, ev) => {
@@ -3886,9 +3882,8 @@
             txHash: ev.log?.transactionHash,
             body: `#${providerId} registered by <span class="hi">${short(owner, 4)}</span> · ${ethers.formatUnits(stake, state.usdcDecimals)} USDC staked`,
           });
-          refreshHero();
-          refreshNetworkStats(); refreshLeaderboard(); refreshActivityChart(); bumpUnseen();
-          refreshAllProviders();
+          refreshAll();
+          bumpUnseen();
         });
 
         state.registry.on("ReputationUpdated", (providerId, completed, slashed, ev) => {
@@ -3901,8 +3896,7 @@
             txHash: ev.log?.transactionHash,
             body: `#${providerId} reputation updated · <span class="hi">${completed}</span> completed, <span class="hi">${slashed}</span> slashed`,
           });
-          refreshAllProviders();
-          refreshLeaderboard();
+          refreshAll();
           bumpUnseen();
         });
       }
