@@ -2122,7 +2122,7 @@
               </div>
             </details>
 
-            <details class="action" id="actionCall" open>
+            <details class="action" id="actionCall">
               <summary>Call a service</summary>
               <div class="action-body">
                 <div class="field">
@@ -2368,6 +2368,7 @@
         seenEvents: new Set(), // dedupe key = `${txHash}:${logIndex}`
         allProviders: [], // public directory
         networkStats: null, // aggregate metrics
+        actionsInitialized: false, // smart-open action tracking
       };
 
       // -------- Tab title counter (unseen events) --------
@@ -2580,6 +2581,9 @@
         try {
           const id = Number(await state.registry.providerIdOf(state.address));
           const regBtn = $("btnRegister");
+          const actionRegister = $("actionRegister");
+          const actionCall = $("actionCall");
+
           if (id === 0) {
             state.providerInfo = null;
             $("providerBox").innerHTML = `
@@ -2590,6 +2594,13 @@
               regBtn.textContent = "Stake & register";
               regBtn.style.opacity = "1";
               regBtn.style.cursor = "pointer";
+            }
+            // Guide new users to register first. Only auto-open on the very
+            // first refresh so we don't fight with user interaction.
+            if (!state.actionsInitialized) {
+              if (actionRegister) actionRegister.open = true;
+              if (actionCall) actionCall.open = false;
+              state.actionsInitialized = true;
             }
             return;
           }
@@ -2605,6 +2616,14 @@
             regBtn.textContent = `Already registered as #${id}`;
             regBtn.style.opacity = "0.5";
             regBtn.style.cursor = "not-allowed";
+          }
+
+          // Once registered, guide the user to the next natural step: calling
+          // a service. Only on first initialization.
+          if (!state.actionsInitialized) {
+            if (actionRegister) actionRegister.open = false;
+            if (actionCall) actionCall.open = true;
+            state.actionsInitialized = true;
           }
         } catch (e) {
           console.error(e);
