@@ -4062,6 +4062,12 @@
           const ro = new ethers.JsonRpcProvider(CONFIG.rpcUrl);
           const registryRo = new ethers.Contract(CONFIG.registry, REGISTRY_ABI, ro);
           const payPerCallRo = new ethers.Contract(CONFIG.payPerCall, PAY_ABI, ro);
+          const usdcRo = new ethers.Contract(CONFIG.usdc, ERC20_ABI, ro);
+
+          // Fetch decimals so pre-connect numbers are accurate (Arc USDC = 18 decimals)
+          try {
+            state.usdcDecimals = Number(await usdcRo.decimals());
+          } catch {}
 
           const latest = await ro.getBlockNumber();
           const from = Math.max(0, latest - LOG_SCAN_BLOCKS);
@@ -4213,5 +4219,4 @@
       })();
     </script>
   </body>
-                                                                                                                  </html>
-                      
+</html>
