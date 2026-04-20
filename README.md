@@ -267,6 +267,7 @@ arcsla/
 - **Reputation-weighted routing.** An on-chain router that picks the best provider for a given task using the Bayesian score.
 - **Agent wallets.** A wrapper contract that lets AI agents hold bounded USDC budgets and spend autonomously, with spending caps and revocable signers.
 - **Optimistic quality challenges.** The current SLA only enforces "a response arrived on time." A future challenge period would let callers dispute junk responses.
+- **Off-chain endpoint monitoring.** An optional aggregator that pings provider endpoints and publishes uptime/latency metrics as a convenience layer — complementary to the on-chain slashing, which already provides cryptoeconomic monitoring through unclaimed timeouts.
 - **Multi-chain via CCTP.** Let providers accept calls on Arc but settle to the chain of their choice using Circle's Cross-Chain Transfer Protocol.
 - **Mainnet.** Once Arc Mainnet is live and audited, ArcSLA moves there.
 
