@@ -1767,6 +1767,365 @@
         color: var(--accent);
       }
 
+      /* ============================================================ */
+      /* Mobile-first responsive rules                                */
+      /* Applied to phones (<= 768px) and tiny screens (<= 480px)     */
+      /* ============================================================ */
+
+      @media (max-width: 768px) {
+        html,
+        body {
+          font-size: 14px;
+        }
+
+        /* --- Topbar: stack brand + wallet info on mobile --- */
+        .topbar-inner {
+          flex-wrap: wrap;
+          gap: 10px;
+          padding: 12px 16px;
+        }
+
+        .brand {
+          gap: 10px;
+        }
+
+        .brand-mark {
+          width: 28px;
+          height: 28px;
+          font-size: 13px;
+        }
+
+        .brand-title {
+          font-size: 14px;
+        }
+
+        .brand-sub {
+          font-size: 10px;
+        }
+
+        .wallet-box {
+          flex-wrap: wrap;
+          gap: 6px;
+          justify-content: flex-end;
+        }
+
+        .network-pill,
+        .usdc-balance,
+        .addr-pill {
+          font-size: 11px;
+          padding: 4px 8px;
+        }
+
+        /* --- Hero: tighter --- */
+        .disconnected {
+          padding: 60px 16px 40px;
+        }
+
+        .disconnected h1 {
+          font-size: 34px;
+          line-height: 1.1;
+        }
+
+        .disconnected p {
+          font-size: 15px;
+          max-width: 100%;
+        }
+
+        .hero-stat-row {
+          grid-template-columns: 1fr;
+          gap: 12px;
+          margin-top: 32px;
+        }
+
+        .hero-stat {
+          padding: 18px 20px;
+        }
+
+        .hero-stat .num {
+          font-size: 26px;
+        }
+
+        /* --- Explainer: stacked --- */
+        .explainer {
+          padding: 0 16px;
+          margin-top: 32px;
+        }
+
+        .explainer-head h2 {
+          font-size: 22px;
+        }
+
+        .explainer-head p {
+          font-size: 14px;
+        }
+
+        .explainer-grid {
+          grid-template-columns: 1fr;
+          gap: 14px;
+        }
+
+        .scenario {
+          padding: 20px 18px;
+        }
+
+        .scenario h3 {
+          font-size: 16px;
+        }
+
+        /* --- How to try this --- */
+        .how-to {
+          padding: 22px 20px;
+          margin: 32px 16px 0;
+        }
+
+        .how-to li {
+          grid-template-columns: 24px 1fr;
+          gap: 10px;
+        }
+
+        .how-to .step-num {
+          width: 24px;
+          height: 24px;
+          font-size: 11px;
+        }
+
+        /* --- Landing feed --- */
+        .landing-feed-box {
+          margin: 32px 16px 0;
+        }
+
+        .landing-feed-box .lfb-head {
+          padding: 12px 14px;
+        }
+
+        /* --- Contract addresses --- */
+        .contract-addresses {
+          padding: 0 16px;
+          font-size: 10px;
+          word-break: break-all;
+        }
+
+        /* --- Connected view: full width, smaller padding --- */
+        #connectedView > div:first-child {
+          padding: 16px 16px 0 !important;
+        }
+
+        /* --- Stats bar: single column on narrow, 2 cols otherwise --- */
+        .stats-bar {
+          grid-template-columns: repeat(2, 1fr);
+          margin-bottom: 20px;
+        }
+
+        .stat-cell {
+          padding: 14px 16px;
+        }
+
+        .stat-cell .stat-value {
+          font-size: 18px;
+        }
+
+        /* --- Grid: single column --- */
+        .grid {
+          padding: 0 16px 40px;
+          gap: 14px;
+        }
+
+        .split {
+          grid-template-columns: 1fr;
+          gap: 14px;
+        }
+
+        /* --- Panel: tighter padding --- */
+        .panel-head {
+          padding: 14px 16px;
+        }
+
+        .panel-body {
+          padding: 16px;
+        }
+
+        .panel-head h2 {
+          font-size: 11px;
+        }
+
+        /* --- Forms: bigger tap targets --- */
+        .field input,
+        .field textarea {
+          padding: 12px 14px;
+          font-size: 15px; /* 16px+ prevents iOS zoom on focus; 15 is fine close to threshold */
+        }
+
+        .field-row {
+          grid-template-columns: 1fr;
+          gap: 12px;
+        }
+
+        .btn {
+          padding: 12px 16px;
+          font-size: 14px;
+        }
+
+        .btn-primary {
+          width: 100%;
+        }
+
+        /* --- Calculator: denser --- */
+        .calc-box {
+          padding: 14px 16px;
+        }
+
+        .calc-row {
+          font-size: 12px;
+          padding: 5px 0;
+        }
+
+        /* --- Provider table: stack-friendly --- */
+        .provider-table {
+          font-size: 12px;
+        }
+
+        .provider-table thead th,
+        .provider-table tbody td {
+          padding: 10px 10px;
+        }
+
+        /* Hide some columns on very small screens */
+        .provider-table .col-sla,
+        .provider-table .col-stake {
+          display: none;
+        }
+
+        /* --- Leaderboard: mobile row --- */
+        .lb-row {
+          grid-template-columns: 28px 1fr auto;
+          padding: 10px 12px;
+          font-size: 11px;
+        }
+
+        .lb-bar {
+          display: none;
+        }
+
+        /* --- Activity chart --- */
+        .activity-chart {
+          height: 80px;
+          padding: 12px 6px 6px;
+          gap: 2px;
+        }
+
+        /* --- Modal --- */
+        .modal {
+          max-height: 92vh;
+          border-radius: 14px;
+        }
+
+        .modal-head {
+          padding: 14px 18px;
+        }
+
+        .modal-body {
+          padding: 18px;
+        }
+
+        .provider-metrics {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 10px;
+        }
+
+        .metric-cell {
+          padding: 10px 12px;
+        }
+
+        /* --- Feed rows: compact on mobile --- */
+        .feed-row {
+          grid-template-columns: 1fr auto;
+          grid-template-rows: auto auto;
+          gap: 6px 10px;
+          padding: 10px 14px;
+          font-size: 11px;
+        }
+
+        .feed-time {
+          grid-column: 1;
+          grid-row: 1;
+          font-size: 10px;
+        }
+
+        .feed-tag {
+          grid-column: 2;
+          grid-row: 1;
+          font-size: 9px;
+        }
+
+        .feed-body {
+          grid-column: 1 / -1;
+          grid-row: 2;
+        }
+
+        .feed-link {
+          grid-column: 2;
+          grid-row: 1;
+          display: none; /* save space, tx link is in body */
+        }
+
+        /* --- Toasts: full width at bottom --- */
+        .toasts {
+          bottom: 12px;
+          right: 12px;
+          left: 12px;
+        }
+
+        .toast {
+          max-width: 100%;
+          min-width: 0;
+        }
+
+        /* --- Footer --- */
+        .site-footer {
+          padding: 32px 16px 36px;
+          margin-top: 40px;
+        }
+
+        .footer-grid {
+          grid-template-columns: 1fr;
+          gap: 24px;
+          margin-bottom: 24px;
+        }
+
+        .footer-bottom {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+          font-size: 10px;
+        }
+
+        /* --- Tooltip: inline instead of absolute on tiny screens --- */
+        .tip::after {
+          width: 180px;
+          font-size: 10px;
+        }
+      }
+
+      /* Very tiny screens (<= 380px) — squeeze the last drop */
+      @media (max-width: 380px) {
+        .stats-bar {
+          grid-template-columns: 1fr;
+        }
+
+        .disconnected h1 {
+          font-size: 28px;
+        }
+
+        .brand-sub {
+          display: none;
+        }
+
+        .provider-table .col-status,
+        .lb-row .lb-bar {
+          display: none;
+        }
+      }
+
       .hidden {
         display: none !important;
       }
