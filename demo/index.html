@@ -452,6 +452,96 @@
         overflow-wrap: anywhere;
       }
 
+      /* ---- Live status bar (clock + SLA gauge) ---- */
+      .live-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 20px;
+        background: var(--bg-1);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-sm);
+      }
+
+      .live-bar-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .live-dot-pulse {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 10px var(--accent);
+        animation: pulse 1.4s ease-in-out infinite;
+      }
+
+      .live-label {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        color: var(--accent);
+      }
+
+      .live-clock {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text);
+        letter-spacing: 0.02em;
+        min-width: 80px;
+      }
+
+      .live-sep { color: var(--text-faint); }
+      .live-meta { font-size: 12px; color: var(--text-dim); }
+
+      .sla-gauge {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .gauge-svg { width: 80px; height: 48px; overflow: visible; }
+
+      #gaugeArc {
+        transition: stroke-dashoffset 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .gauge-label { text-align: right; }
+
+      .gauge-value {
+        font-family: var(--font-mono);
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--accent);
+        line-height: 1;
+      }
+
+      .gauge-caption {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-top: 4px;
+      }
+
+      @media (max-width: 700px) {
+        .live-bar {
+          flex-direction: column;
+          gap: 14px;
+          align-items: stretch;
+        }
+        .live-bar-left, .live-bar-right {
+          justify-content: center;
+        }
+        .sla-gauge { justify-content: center; }
+      }
+
       /* ---- Network stats bar ---- */
       .stats-bar {
         display: grid;
@@ -2408,6 +2498,35 @@
     <!-- ============================================================ -->
     <main id="connectedView" class="hidden">
       <div style="max-width: 1800px; margin: 0 auto; padding: 32px 48px 0;">
+        <div class="live-bar">
+          <div class="live-bar-left">
+            <span class="live-dot-pulse"></span>
+            <span class="live-label">LIVE</span>
+            <span class="live-clock mono" id="liveClock">--:--:--</span>
+            <span class="live-sep">·</span>
+            <span class="live-meta mono">Arc Testnet</span>
+          </div>
+          <div class="live-bar-right">
+            <div class="sla-gauge">
+              <svg viewBox="0 0 120 70" class="gauge-svg">
+                <path d="M 10 60 A 50 50 0 0 1 110 60" stroke="var(--bg-3)" stroke-width="8" fill="none" stroke-linecap="round"/>
+                <path d="M 10 60 A 50 50 0 0 1 110 60" stroke="url(#gaugeGrad)" stroke-width="8" fill="none" stroke-linecap="round" stroke-dasharray="157" stroke-dashoffset="157" id="gaugeArc"/>
+                <defs>
+                  <linearGradient id="gaugeGrad" x1="0" x2="1" y1="0" y2="0">
+                    <stop offset="0%" stop-color="#dc2626"/>
+                    <stop offset="50%" stop-color="#d97706"/>
+                    <stop offset="100%" stop-color="#059669"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="gauge-label">
+                <div class="gauge-value" id="gaugeValue">—</div>
+                <div class="gauge-caption">honor rate</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="stats-bar">
           <div class="stat-cell">
             <div class="stat-label">Providers</div>
@@ -2932,6 +3051,40 @@
         $("balanceBox").classList.remove("hidden");
         $("netLabel").textContent = CONFIG.chainName;
         $("netDot").classList.add("ok");
+        startLiveClock();
+      }
+
+      // Ticking clock — updates every second while connected
+      let clockInterval = null;
+      function startLiveClock() {
+        if (clockInterval) return;
+        const tick = () => {
+          const now = new Date();
+          const hh = String(now.getHours()).padStart(2, "0");
+          const mm = String(now.getMinutes()).padStart(2, "0");
+          const ss = String(now.getSeconds()).padStart(2, "0");
+          const el = $("liveClock");
+          if (el) el.textContent = `${hh}:${mm}:${ss}`;
+        };
+        tick();
+        clockInterval = setInterval(tick, 1000);
+      }
+
+      // Update SLA gauge based on honor rate (receipts / calls)
+      function updateGauge(honorRate) {
+        const arc = $("gaugeArc");
+        const val = $("gaugeValue");
+        if (!arc || !val) return;
+        const pct = Math.max(0, Math.min(100, honorRate));
+        // Arc total length ~157 (half-circle radius 50)
+        const CIRCUMFERENCE = 157;
+        const offset = CIRCUMFERENCE - (CIRCUMFERENCE * pct) / 100;
+        arc.setAttribute("stroke-dashoffset", offset);
+        val.textContent = `${pct.toFixed(1)}%`;
+        // Color shift based on value
+        if (pct >= 90) val.style.color = "var(--accent)";
+        else if (pct >= 70) val.style.color = "var(--warn)";
+        else val.style.color = "var(--danger)";
       }
 
       function showDisconnected() {
@@ -3180,6 +3333,7 @@
             ? Math.round((state.networkStats.receipts / state.networkStats.calls) * 100)
             : 0;
           $("statReceiptsSub").textContent = `${honorRate}% honor rate`;
+          updateGauge(honorRate);
           $("statSlashedSub").textContent = `${state.networkStats.slashed} slash${state.networkStats.slashed === 1 ? "" : "es"}`;
 
           // Also update hero (disconnected view)
