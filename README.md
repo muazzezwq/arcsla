@@ -262,8 +262,15 @@ arcsla/
 
 ---
 
+## Known limitations
+
+- **Receipt signing shows raw bytes in the wallet.** The current implementation uses EIP-191 `signMessage` over `keccak256(callId, responseHash)`. MetaMask (and most wallets) attempt to render those raw bytes as a string, which comes out as unreadable characters. The signature is correct and the protocol works, but the UX is not ideal — v2 will switch to EIP-712 typed data so wallets can show a human-readable receipt preview.
+- **USDC decimals fetched at runtime.** Standard USDC uses 6 decimals, but Arc's testnet USDC uses 18. The demo reads `decimals()` from the token contract at boot, so any deployment works, but amounts displayed before wallet connection assume the detected value.
+- **Event scan window is 50,000 blocks.** For historical `CallStarted`/`ReceiptSubmitted`/`CallSlashed` counts, the demo scans the last ~27 hours of blocks only. Provider count comes from contract state (`nextProviderId`) so it's always accurate, but very old calls won't appear in the "Calls" stat. A proper indexer (subgraph or similar) is planned for v2.
+
 ## Roadmap
 
+- **EIP-712 typed data for receipts.** Replace the current raw-bytes EIP-191 signature with EIP-712 typed data so wallets can display a human-readable receipt preview (callId, responseHash, chain, contract) instead of binary gibberish. Requires a contract redeploy.
 - **Reputation-weighted routing.** An on-chain router that picks the best provider for a given task using the Bayesian score.
 - **Agent wallets.** A wrapper contract that lets AI agents hold bounded USDC budgets and spend autonomously, with spending caps and revocable signers.
 - **Optimistic quality challenges.** The current SLA only enforces "a response arrived on time." A future challenge period would let callers dispute junk responses.
