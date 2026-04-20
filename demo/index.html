@@ -2471,8 +2471,11 @@
                   </div>
                 </div>
                 <div class="field">
-                  <label>Endpoint <span class="tip" data-tip="URL where your off-chain service is reachable. Stored on-chain for discovery but not validated; callers reach this URL to actually make requests.">?</span></label>
-                  <input type="text" id="regEndpoint" placeholder="https://api.example.com" />
+                  <label>Endpoint <span style="color: var(--text-faint); font-weight: 400; font-size: 11px;">(optional)</span> <span class="tip" data-tip="URL where your off-chain service is reachable. Stored on-chain so callers can find you. Not validated by the contract — for testing, any value works (including blank).">?</span></label>
+                  <input type="text" id="regEndpoint" placeholder="https://api.example.com — or leave blank for testing" />
+                  <div class="hint">
+                    Just testing the demo? Leave this blank or put any URL. In production, this is where callers would send API requests after paying.
+                  </div>
                 </div>
 
                 <div class="calc-box">
