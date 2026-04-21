@@ -416,19 +416,19 @@
 
       /* ---- Layout ---- */
       .grid {
-        width: 100%;
-        padding: 24px 32px 60px;
-        display: grid;
-        grid-template-columns: 420px minmax(0, 1fr);
-        gap: 24px;
-        align-items: start;
-      }
+  width: 100%;
+  padding: 24px 32px 60px;
+  display: grid;
+  grid-template-columns: 1fr; /* FIX */
+  gap: 24px;
+  align-items: start;
+}
 
-      @media (max-width: 1200px) {
-        .grid {
-          grid-template-columns: 1fr;
-        }
-      }
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: 320px minmax(0, 1fr); /* FIX */
+  }
+}
 
       /* ---- Panel (card) ---- */
       .panel {
