@@ -3905,7 +3905,11 @@
           const responseHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
 
           // Build digest: keccak256(callId, responseHash), then EIP-191 prefix
-          const inner = ethers.keccak256(ethers.concat([callId, responseHash]));
+          // getBytes() converts hex strings to Uint8Array so concat works correctly
+          const inner = ethers.keccak256(ethers.concat([
+            ethers.getBytes(callId),
+            ethers.getBytes(responseHash)
+          ]));
           // Use signMessage on the raw bytes — ethers v6 wraps with \x19 prefix
           const tSign = toast({
             kind: "info",
