@@ -3057,6 +3057,7 @@
 
           showConnected();
           await refreshAll();
+          await loadMyCalls();
           subscribeToEvents();
 
           window.ethereum.on?.("accountsChanged", () => location.reload());
@@ -3165,6 +3166,61 @@
         ]);
         // Second wave: depends on state.allProviders being populated
         await refreshLeaderboard();
+      }
+
+      // Load existing calls for the connected wallet from on-chain event logs.
+      // Called once on connect so the countdown is visible even for calls opened
+      // before this session.
+      async function loadMyCalls() {
+        try {
+          const myFilter = state.payPerCall.filters.CallStarted(null, null, state.address);
+          const startedLogs = await safeQuery(state.payPerCall, "CallStarted", myFilter);
+          const receiptLogs = await safeQuery(state.payPerCall, "ReceiptSubmitted");
+          const slashedLogs = await safeQuery(state.payPerCall, "CallSlashed");
+
+          const receiptSet = new Set(receiptLogs.map((l) => l.args.callId));
+          const slashedSet = new Set(slashedLogs.map((l) => l.args.callId));
+
+          for (const l of startedLogs) {
+            const callId = l.args.callId;
+            if (state.myCalls.has(callId)) continue;
+            const deadlineNum = Number(l.args.deadline);
+            let status = 1;
+            if (receiptSet.has(callId)) status = 2;
+            else if (slashedSet.has(callId)) status = 3;
+
+            let startedAt = deadlineNum - 60;
+            let totalSec = 60;
+            try {
+              const onChain = await state.payPerCall.getCall(callId);
+              startedAt = Number(onChain.startedAt);
+              totalSec = deadlineNum - startedAt;
+            } catch {}
+
+            state.myCalls.set(callId, {
+              callId,
+              providerId: l.args.providerId,
+              caller: l.args.caller,
+              amount: l.args.amount,
+              deadline: deadlineNum,
+              startedAt,
+              totalSec,
+              status,
+            });
+          }
+
+          if (state.myCalls.size > 0) {
+            renderCalls();
+            const pending = Array.from(state.myCalls.values()).filter(c => c.status === 1);
+            if (pending.length > 0) {
+              const latest = pending[pending.length - 1];
+              $("rcpCallId").value = latest.callId;
+              $("toCallId").value = latest.callId;
+            }
+          }
+        } catch (e) {
+          console.warn("loadMyCalls failed:", e);
+        }
       }
 
       async function refreshBalance() {
