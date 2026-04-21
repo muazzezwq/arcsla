@@ -2982,6 +2982,12 @@
 
         try {
           state.provider = new ethers.BrowserProvider(window.ethereum);
+          // Force MetaMask popup every time — even if already connected.
+          // wallet_requestPermissions always shows the account selector.
+          await window.ethereum.request({
+            method: "wallet_requestPermissions",
+            params: [{ eth_accounts: {} }],
+          });
           await state.provider.send("eth_requestAccounts", []);
           state.signer = await state.provider.getSigner();
           state.address = await state.signer.getAddress();
