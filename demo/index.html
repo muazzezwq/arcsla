@@ -1420,6 +1420,235 @@
         color: var(--text-dim);
       }
 
+      /* ---- Guide tabs ---- */
+      .guide-box {
+        margin: 40px auto 0;
+        max-width: 860px;
+        background: var(--bg-1);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        text-align: left;
+      }
+
+      .guide-tabs {
+        display: flex;
+        overflow-x: auto;
+        border-bottom: 1px solid var(--border);
+        background: var(--bg-2);
+        scrollbar-width: none;
+      }
+
+      .guide-tabs::-webkit-scrollbar { display: none; }
+
+      .guide-tab {
+        flex-shrink: 0;
+        padding: 12px 18px;
+        border: none;
+        background: transparent;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-faint);
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: all 0.15s ease;
+        white-space: nowrap;
+      }
+
+      .guide-tab:hover { color: var(--text); background: var(--bg-3); }
+
+      .guide-tab.active {
+        color: var(--accent);
+        border-bottom-color: var(--accent);
+        background: var(--bg-1);
+      }
+
+      .guide-content {
+        display: none;
+        padding: 24px 28px 28px;
+        animation: fadeIn 0.18s ease;
+      }
+
+      .guide-content.active { display: block; }
+
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+
+      .guide-section-title {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-bottom: 10px;
+      }
+
+      .guide-lead {
+        font-size: 14px;
+        color: var(--text-dim);
+        line-height: 1.65;
+        margin: 0 0 20px;
+      }
+
+      .guide-lead strong { color: var(--text); }
+
+      .guide-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .guide-step {
+        display: grid;
+        grid-template-columns: 32px 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+
+      .guide-step-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: var(--accent-bg);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+        border: 1px solid rgba(5,150,105,0.15);
+      }
+
+      .guide-step-body {
+        padding-top: 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+
+      .guide-step-body strong {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .guide-step-body span {
+        font-size: 13px;
+        color: var(--text-dim);
+        line-height: 1.6;
+      }
+
+      .guide-step-body a { color: var(--accent); text-decoration: none; }
+      .guide-step-body a:hover { text-decoration: underline; }
+      .guide-step-body code {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--accent);
+        background: var(--accent-bg);
+        padding: 1px 5px;
+        border-radius: 3px;
+      }
+
+      .guide-callout {
+        margin-top: 16px;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .guide-callout.info    { background: var(--info-bg);   border: 1px solid rgba(37,99,235,0.2);  color: var(--text-dim); }
+      .guide-callout.warn    { background: var(--warn-bg);   border: 1px solid rgba(217,119,6,0.25); color: var(--text-dim); }
+      .guide-callout.danger  { background: var(--danger-bg); border: 1px solid rgba(220,38,38,0.25); color: var(--text-dim); }
+      .guide-callout strong  { color: var(--text); }
+
+      .guide-kv {
+        margin-top: 16px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        font-size: 12px;
+      }
+
+      .guide-kv-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 14px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .guide-kv-row:last-child { border-bottom: none; }
+      .guide-kv-row span:first-child { color: var(--text-faint); }
+      .guide-kv-row span:last-child  { color: var(--text); font-weight: 600; }
+
+      .faq-list { display: flex; flex-direction: column; gap: 2px; }
+
+      .faq-item {
+        border-radius: 8px;
+        overflow: hidden;
+        border: 1px solid var(--border);
+        margin-bottom: 6px;
+      }
+
+      .faq-q {
+        padding: 12px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        background: var(--bg-2);
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .faq-q::after {
+        content: "+";
+        font-family: var(--font-mono);
+        color: var(--text-faint);
+        font-size: 16px;
+        transition: transform 0.2s;
+      }
+
+      .faq-item.open .faq-q::after { content: "−"; }
+
+      .faq-a {
+        display: none;
+        padding: 12px 16px;
+        font-size: 13px;
+        color: var(--text-dim);
+        line-height: 1.6;
+        border-top: 1px solid var(--border);
+        background: var(--bg-1);
+      }
+
+      .faq-item.open .faq-a { display: block; }
+      .faq-a code {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--accent);
+        background: var(--accent-bg);
+        padding: 1px 5px;
+        border-radius: 3px;
+      }
+
+      @media (max-width: 768px) {
+        .guide-box { margin: 24px 16px 0; }
+        .guide-content { padding: 18px 16px 20px; }
+        .guide-tab { padding: 10px 12px; font-size: 12px; }
+        .guide-step { grid-template-columns: 28px 1fr; gap: 10px; }
+        .guide-step-icon { width: 28px; height: 28px; font-size: 11px; }
+      }
+
       /* ---- Inline tooltip ---- */
       .tip {
         display: inline-block;
@@ -2454,56 +2683,82 @@
           </div>
         </div>
 
-        <div class="how-to">
-          <h3>How to try this</h3>
-          <ol>
-            <li>
-              <span class="step-num">1</span>
-              <div class="step-body">
-                <strong>Get testnet USDC.</strong> Visit
-                <a href="https://faucet.circle.com/" target="_blank" rel="noreferrer"
-                  >faucet.circle.com</a
-                >, select Arc Testnet, and paste your wallet address. You need USDC because on
-                Arc it is also the gas token — one asset covers both.
-              </div>
-            </li>
-            <li>
-              <span class="step-num">2</span>
-              <div class="step-body">
-                <strong>Connect your wallet.</strong> Click the button above. MetaMask will
-                prompt you to add the Arc Testnet network automatically. Approve the switch.
-              </div>
-            </li>
-            <li>
-              <span class="step-num">3</span>
-              <div class="step-body">
-                <strong>Try one of two flows:</strong>
-                <div class="alt-line">
-                  ▸ <strong>Be a caller</strong> — pick Provider #1, pay 1 USDC, receive a signed
-                  on-chain receipt. If the provider misses the deadline, claim a refund plus a
-                  slice of their stake.
-                </div>
-                <div class="alt-line">
-                  ▸ <strong>Be a provider</strong> — stake 10 USDC, set your SLA, and wait for
-                  calls. Every fulfilled call bumps your on-chain reputation.
-                </div>
-              </div>
-            </li>
-          </ol>
-          <div class="hint-line">
-            Want the full picture? Read the
-            <a href="https://github.com/muazzezwq/arcsla" target="_blank" rel="noreferrer"
-              >README on GitHub</a
-            >
-            or the
-            <a
-              href="https://github.com/muazzezwq/arcsla/blob/main/ARCHITECTURE.md"
-              target="_blank"
-              rel="noreferrer"
-              >architecture deep-dive</a
-            >.
+        <!-- ===== GUIDE TABS ===== -->
+        <div class="guide-box" id="guideBox">
+          <div class="guide-tabs">
+            <button class="guide-tab active" data-tab="start">🚀 Başlangıç</button>
+            <button class="guide-tab" data-tab="caller">📞 Caller</button>
+            <button class="guide-tab" data-tab="provider">🏗️ Provider</button>
+            <button class="guide-tab" data-tab="slash">⚡ Slash</button>
+            <button class="guide-tab" data-tab="faq">❓ SSS</button>
+          </div>
+
+          <div class="guide-content active" data-content="start">
+            <div class="guide-section-title">ArcSLA nedir?</div>
+            <p class="guide-lead">ArcSLA, servis sağlayıcıların USDC stake ederek SLA taahhüdü verdiği, çağıranların her istek için ödeme yaptığı <strong>on-chain bir pazar yeri</strong>dir. Sağlayıcı zamanında yanıt vermezse stake'i otomatik olarak kesilir — hakem veya aracıya gerek yoktur.</p>
+            <div class="guide-steps">
+              <div class="guide-step"><div class="guide-step-icon">1</div><div class="guide-step-body"><strong>Testnet USDC al</strong><span><a href="https://faucet.circle.com/" target="_blank" rel="noreferrer">faucet.circle.com</a> → Arc Testnet seç → cüzdan adresini yapıştır. Arc'ta USDC hem gas hem para birimi — tek token yeterli.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">2</div><div class="guide-step-body"><strong>Cüzdanı bağla</strong><span>"Connect wallet" butonuna tıkla. MetaMask Arc Testnet ağını otomatik eklemeni isteyecek, onayla.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">3</div><div class="guide-step-body"><strong>Rolünü seç</strong><span>Üstteki sekmelerde <em>Caller</em> ya da <em>Provider</em> akışını adım adım takip et.</span></div></div>
+            </div>
+            <div class="guide-callout info"><strong>💡 İpucu:</strong> Hem caller hem provider olarak aynı cüzdanı kullanabilirsin. İkisini ayrı test etmek için iki farklı MetaMask hesabı önerilir.</div>
+          </div>
+
+          <div class="guide-content" data-content="caller">
+            <div class="guide-section-title">Caller (Çağıran) Akışı</div>
+            <p class="guide-lead">Servis çağırmak için USDC ödersin. Sağlayıcı zamanında yanıt verirse tamamlanır. Vermezse para iade edilir ve sağlayıcı cezalandırılır.</p>
+            <div class="guide-steps">
+              <div class="guide-step"><div class="guide-step-icon">1</div><div class="guide-step-body"><strong>Provider seç</strong><span>Sol panelde <em>Call a service</em> bölümünü aç. Provider ID'ye bir numara gir (örn. <code>1</code>). Fiyat ve SLA süresi otomatik gösterilir.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">2</div><div class="guide-step-body"><strong>İstek gönder</strong><span>Request payload alanına bir metin yaz (örn. <code>ping</code>). <em>Approve &amp; call</em> butonuna tıkla — MetaMask iki işlem imzalamani isteyecek: USDC onayı + çağrı açma.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">3</div><div class="guide-step-body"><strong>Countdown'u takip et</strong><span><em>Your Calls</em> panelinde call'un görünür, geri sayım başlar. Sağlayıcı yanıt verirse "completed" olur.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">4</div><div class="guide-step-body"><strong>Timeout → Slash Talebi</strong><span>SLA süresi dolunca <code>claim slash</code> butonu çıkar. Tıkla → MetaMask açılır → onayla. USDC iade + provider stake'inden ceza bonus olarak gelir.</span></div></div>
+            </div>
+            <div class="guide-callout warn"><strong>⏱ Dikkat:</strong> Countdown sarıya döndüğünde (30s kaldı) ve kırmızıya döndüğünde (10s kaldı) otomatik bildirim gelir. Provider iseniz makbuzu hemen gönderin!</div>
+          </div>
+
+          <div class="guide-content" data-content="provider">
+            <div class="guide-section-title">Provider (Sağlayıcı) Akışı</div>
+            <p class="guide-lead">Stake koyarak servis sağlayıcı olursun. Her başarılı yanıt reputation'ını artırır. SLA süresini geçersen stake'inden para kesilir.</p>
+            <div class="guide-steps">
+              <div class="guide-step"><div class="guide-step-icon">1</div><div class="guide-step-body"><strong>Kayıt ol &amp; stake yatır</strong><span><em>Register as provider</em> bölümünü aç. Min <strong>10 USDC</strong> stake, fiyat, yanıt süresi ve slash % belirle. Signer adresini boş bırakırsan kendi cüzdanın kullanılır.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">2</div><div class="guide-step-body"><strong>Çağrı gelince yanıt ver</strong><span>CallStarted event gelince SLA saati başlar. <em>Submit receipt</em> bölümünü aç, Call ID otomatik dolu, response payload gir.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">3</div><div class="guide-step-body"><strong>Makbuzu imzala &amp; gönder</strong><span><em>Sign &amp; submit</em> tıkla. MetaMask önce imza (off-chain), sonra zincir işlemi ister. Okunamayan karakterler normaldir — ham byte imzalıyorsun.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">4</div><div class="guide-step-body"><strong>Ödeme al &amp; reputation kazan</strong><span>Makbuz kabul edilince escrow USDC'si sana gelir. Her başarılı yanıt on-chain reputation'ını artırır.</span></div></div>
+            </div>
+            <div class="guide-callout danger"><strong>🚨 Kritik:</strong> Makbuz için <strong>signer adresi</strong> ile bağlı olmalısın. Your Provider panelinde <em>"✓ matches your wallet"</em> yazıyorsa hazırsın.</div>
+            <div class="guide-kv">
+              <div class="guide-kv-row"><span>Minimum stake</span><span>10 USDC</span></div>
+              <div class="guide-kv-row"><span>Minimum yanıt süresi</span><span>10 saniye</span></div>
+              <div class="guide-kv-row"><span>Slash aralığı</span><span>0% – 100%</span></div>
+              <div class="guide-kv-row"><span>Reputation formülü</span><span>(başarılı + 2) / (toplam + 3) × 100</span></div>
+            </div>
+          </div>
+
+          <div class="guide-content" data-content="slash">
+            <div class="guide-section-title">Slash (Ceza) Sistemi</div>
+            <p class="guide-lead">Slash sistemi, sağlayıcıların SLA taahhütlerine uymasını <strong>ekonomik olarak zorlayan</strong> mekanizmadır. Hiçbir hakem veya güvenilir taraf gerektirmez.</p>
+            <div class="guide-steps">
+              <div class="guide-step"><div class="guide-step-icon">⚡</div><div class="guide-step-body"><strong>Ne zaman slash olur?</strong><span>Sağlayıcı <code>maxResponseTime</code> içinde <code>submitReceipt()</code> çağırmazsa deadline dolar. Caller <code>claimTimeout()</code> ile slash başlatabilir.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">💰</div><div class="guide-step-body"><strong>Hesaplama</strong><span><code>slash = stake × slashBps / 10000</code><br>Örn. 10 USDC stake + %20 slash → 2 USDC kesilir ve caller'a gönderilir.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">🔄</div><div class="guide-step-body"><strong>Para akışı</strong><span>Escrow'daki call ücreti caller'a iade edilir. Slash edilen stake de caller'a gönderilir. Kalan stake provider'da kalır.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">📉</div><div class="guide-step-body"><strong>Reputation etkisi</strong><span>Her slash on-chain reputation sayacını düşürür, sağlayıcı daha az tercih edilir.</span></div></div>
+            </div>
+            <div class="guide-callout info"><strong>Örnek:</strong> 10 USDC stake · %20 slash · 30s SLA. Caller 1 USDC öder. Provider 30s içinde yanıt vermez. Caller claim slash tıklar → <strong>1 USDC iade + 2 USDC bonus</strong>. Provider stake'i 8 USDC'ye düşer.</div>
+          </div>
+
+          <div class="guide-content" data-content="faq">
+            <div class="guide-section-title">Sıkça Sorulan Sorular</div>
+            <div class="faq-list">
+              <div class="faq-item"><div class="faq-q">MetaMask'ta okunamayan karakterler görüyorum, normal mi?</div><div class="faq-a">Evet, tamamen normal. Makbuz imzalarken ham byte (keccak256 hash) imzalıyorsun. EIP-712 desteği v2'de planlanıyor.</div></div>
+              <div class="faq-item"><div class="faq-q">Call ID nedir, nereden geliyor?</div><div class="faq-a"><code>callService()</code> çağrıldığında zincir üzerinde üretilen benzersiz 32-byte tanımlayıcı. <em>Approve &amp; call</em> sonrası otomatik dolar.</div></div>
+              <div class="faq-item"><div class="faq-q">Makbuzu SLA süresi dolduktan sonra gönderebilir miyim?</div><div class="faq-a">Hayır. Kontrat deadline geçtikten sonra <code>submitReceipt()</code> reddeder. Countdown sayacına dikkat et!</div></div>
+              <div class="faq-item"><div class="faq-q">Aynı cüzdanla hem provider hem caller olabilir miyim?</div><div class="faq-a">Teknik olarak evet, ama test için iki ayrı hesap önerilir.</div></div>
+              <div class="faq-item"><div class="faq-q">Stake'imi geri çekebilir miyim?</div><div class="faq-a">Bekleyen (pending) çağrı yokken unstake edebilirsin. Cooldown süresi uygulanır.</div></div>
+              <div class="faq-item"><div class="faq-q">Reputation skoru nasıl hesaplanıyor?</div><div class="faq-a">Bayesian: <code>(başarılı + 2) / (toplam + 3) × 100</code>. Yeni provider 66 ile başlar, her başarılı çağrı artırır, her slash düşürür.</div></div>
+            </div>
           </div>
         </div>
+        <!-- ===== /GUIDE TABS ===== -->
 
         <div class="landing-feed-box">
           <div class="lfb-head">
@@ -4495,6 +4750,26 @@
       });
       // Initial render
       updateCalculator();
+
+
+      // -------- Guide tabs & FAQ accordion --------
+      document.querySelectorAll(".guide-tab").forEach((tab) => {
+        tab.addEventListener("click", () => {
+          const targetId = tab.dataset.tab;
+          document.querySelectorAll(".guide-tab").forEach(t => t.classList.remove("active"));
+          document.querySelectorAll(".guide-content").forEach(c => c.classList.remove("active"));
+          tab.classList.add("active");
+          const content = document.querySelector(`.guide-content[data-content="${targetId}"]`);
+          if (content) content.classList.add("active");
+        });
+      });
+
+      document.querySelectorAll(".faq-q").forEach((q) => {
+        q.addEventListener("click", () => {
+          const item = q.closest(".faq-item");
+          item.classList.toggle("open");
+        });
+      });
 
       // -------- Boot: read-only stats + landing feed (no wallet needed) --------
       // Uses raw fetch() JSON-RPC calls instead of ethers.JsonRpcProvider to
