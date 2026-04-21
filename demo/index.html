@@ -39,142 +39,9 @@
         --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
       }
 
-      [data-theme="dark"] {
-        --bg-0: #0a0a0a;
-        --bg-1: #111111;
-        --bg-2: #1a1a1a;
-        --bg-3: #222222;
-        --border: #2a2a2a;
-        --border-hi: #3a3a3a;
-        --text: #f0f0f0;
-        --text-dim: #a0a0a0;
-        --text-faint: #555555;
-        --accent: #10b981;
-        --accent-dim: #34d399;
-        --accent-bg: rgba(16, 185, 129, 0.1);
-        --danger: #f87171;
-        --danger-bg: rgba(248, 113, 113, 0.1);
-        --warn: #fbbf24;
-        --warn-bg: rgba(251, 191, 36, 0.1);
-        --info: #60a5fa;
-        --info-bg: rgba(96, 165, 250, 0.1);
-        --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
-        --shadow-md: 0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
-        --shadow-lg: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -2px rgba(0,0,0,0.4);
+      * {
+        box-sizing: border-box;
       }
-
-      [data-theme="dark"] body {
-        background-image:
-          radial-gradient(ellipse 1200px 600px at 20% -10%, rgba(16,185,129,0.05), transparent 50%),
-          radial-gradient(ellipse 900px 500px at 110% 20%, rgba(96,165,250,0.03), transparent 50%);
-      }
-
-      [data-theme="dark"] .topbar {
-        background: rgba(10,10,10,0.85);
-      }
-
-      [data-theme="dark"] .field input,
-      [data-theme="dark"] .field textarea,
-      [data-theme="dark"] .field select {
-        background: var(--bg-2);
-        color: var(--text);
-        border-color: var(--border);
-      }
-
-      [data-theme="dark"] .panel,
-      [data-theme="dark"] .live-bar,
-      [data-theme="dark"] .stats-bar,
-      [data-theme="dark"] .guide-box,
-      [data-theme="dark"] .how-to,
-      [data-theme="dark"] .landing-feed-box,
-      [data-theme="dark"] .explainer .scenario {
-        box-shadow: 0 1px 3px rgba(0,0,0,0.5);
-      }
-
-      [data-theme="dark"] .network-pill,
-      [data-theme="dark"] .usdc-balance,
-      [data-theme="dark"] .addr-pill {
-        background: var(--bg-2);
-        border-color: var(--border);
-      }
-
-      [data-theme="dark"] details.action > summary:hover {
-        background: var(--bg-3);
-      }
-
-      [data-theme="dark"] .provider-table thead th {
-        background: var(--bg-2);
-      }
-
-      [data-theme="dark"] .stat-cell {
-        background: var(--bg-1);
-      }
-
-      [data-theme="dark"] .stat-cell:hover {
-        background: var(--bg-2);
-      }
-
-
-      [data-theme="dark"] .btn {
-        background: var(--bg-2);
-      }
-
-      [data-theme="dark"] .btn:hover:not(:disabled) {
-        background: var(--bg-3);
-      }
-
-      .theme-toggle {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
-        border-radius: 20px;
-        border: 1px solid var(--border);
-        background: var(--bg-2);
-        cursor: pointer;
-        font-size: 13px;
-        color: var(--text-dim);
-        transition: all 0.2s ease;
-        font-family: inherit;
-      }
-
-      .theme-toggle:hover {
-        border-color: var(--border-hi);
-        color: var(--text);
-      }
-
-      .theme-toggle .toggle-track {
-        width: 32px;
-        height: 18px;
-        border-radius: 9px;
-        background: var(--bg-3);
-        border: 1px solid var(--border-hi);
-        position: relative;
-        transition: background 0.2s ease;
-      }
-
-      .theme-toggle .toggle-thumb {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        background: var(--text-faint);
-        position: absolute;
-        top: 2px;
-        left: 2px;
-        transition: all 0.2s ease;
-      }
-
-      [data-theme="dark"] .theme-toggle .toggle-track {
-        background: var(--accent-bg);
-        border-color: var(--accent);
-      }
-
-      [data-theme="dark"] .theme-toggle .toggle-thumb {
-        background: var(--accent);
-        left: 16px;
-      }
-
-
 
       html,
       body {
@@ -233,8 +100,9 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 14px 32px;
-        width: 100%;
+        padding: 18px 48px;
+        max-width: 1800px;
+        margin: 0 auto;
       }
 
       .brand {
@@ -373,7 +241,6 @@
         color: #ffffff;
         border-color: var(--accent);
         font-weight: 600;
-        width: 100%;
       }
 
       .btn-primary:hover:not(:disabled) {
@@ -416,19 +283,19 @@
 
       /* ---- Layout ---- */
       .grid {
-  width: 100%;
-  padding: 24px 32px 60px;
-  display: grid;
-  grid-template-columns: 1fr; /* FIX */
-  gap: 24px;
-  align-items: start;
-}
+        max-width: 1800px;
+        margin: 0 auto;
+        padding: 32px 48px 60px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+      }
 
-@media (min-width: 1024px) {
-  .grid {
-    grid-template-columns: 320px minmax(0, 1fr); /* FIX */
-  }
-}
+      @media (max-width: 1100px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
 
       /* ---- Panel (card) ---- */
       .panel {
@@ -438,7 +305,6 @@
         overflow: hidden;
         box-shadow: var(--shadow-sm);
         transition: box-shadow 0.2s ease;
-        min-width: 0;
       }
 
       .panel:hover {
@@ -464,8 +330,6 @@
 
       .panel-body {
         padding: 22px;
-        min-width: 0;
-        overflow: hidden;
       }
 
       .panel-body.compact {
@@ -512,10 +376,10 @@
       }
 
       .action-body {
-        padding: 0 16px 16px;
+        padding: 0 18px 18px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
       }
 
       /* ---- Form fields ---- */
@@ -572,25 +436,20 @@
       /* ---- Provider info / call table ---- */
       .kv {
         display: grid;
-        grid-template-columns: 130px 1fr;
+        grid-template-columns: 140px 1fr;
         gap: 8px 14px;
         font-family: var(--font-mono);
         font-size: 12px;
-        width: 100%;
-        min-width: 0;
       }
 
       .kv dt {
         color: var(--text-faint);
-        white-space: nowrap;
       }
 
       .kv dd {
         margin: 0;
         color: var(--text);
         overflow-wrap: anywhere;
-        word-break: break-all;
-        min-width: 0;
       }
 
       /* ---- Live status bar (clock + SLA gauge) ---- */
@@ -676,7 +535,6 @@
           flex-direction: column;
           gap: 14px;
           align-items: stretch;
-          padding: 12px 16px;
         }
         .live-bar-left, .live-bar-right {
           justify-content: center;
@@ -705,9 +563,8 @@
 
       .stat-cell {
         background: var(--bg-1);
-        padding: 18px 20px;
+        padding: 20px 22px;
         transition: background 0.15s ease;
-        min-width: 0;
       }
 
       .stat-cell:hover {
@@ -725,14 +582,11 @@
 
       .stat-cell .stat-value {
         font-family: var(--font-mono);
-        font-size: clamp(18px, 2vw, 28px);
+        font-size: 28px;
         font-weight: 700;
         color: var(--text);
         line-height: 1.1;
         letter-spacing: -0.02em;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
       }
 
       .stat-cell .stat-value.accent {
@@ -752,15 +606,8 @@
       }
 
       /* ---- Provider list table ---- */
-      .provider-table-wrap {
-        width: 100%;
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-      }
-
       .provider-table {
         width: 100%;
-        min-width: 600px;
         border-collapse: collapse;
         font-family: var(--font-mono);
         font-size: 13px;
@@ -1055,12 +902,11 @@
         padding: 12px 18px;
         border-bottom: 1px solid var(--border);
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: 1fr auto;
         align-items: center;
         gap: 12px;
         font-family: var(--font-mono);
         font-size: 12px;
-        min-width: 0;
       }
 
       .call-row:last-child {
@@ -1173,13 +1019,12 @@
       .feed-row {
         display: grid;
         grid-template-columns: auto auto 1fr auto;
-        gap: 10px;
+        gap: 14px;
         padding: 10px 18px;
         border-bottom: 1px solid var(--border);
         font-family: var(--font-mono);
         font-size: 11px;
         align-items: baseline;
-        min-width: 0;
       }
 
       .feed-row:last-child {
@@ -1248,8 +1093,7 @@
       /* ---- Landing feed (pre-connect) ---- */
       .landing-feed-box {
         margin: 40px auto 0;
-        max-width: 1400px;
-        width: 100%;
+        max-width: 720px;
         background: var(--bg-1);
         border: 1px solid var(--border);
         border-radius: 12px;
@@ -1391,8 +1235,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 80px 32px 60px;
-        width: 100%;
+        padding: 100px 24px 60px;
         text-align: center;
       }
 
@@ -1402,7 +1245,7 @@
         letter-spacing: -0.04em;
         margin: 0 0 20px;
         line-height: 1.05;
-        background: linear-gradient(135deg, var(--text) 0%, var(--text-dim) 100%);
+        background: linear-gradient(135deg, #0a0a0a 0%, #404040 100%);
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -1426,7 +1269,7 @@
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 20px;
-        max-width: 900px;
+        max-width: 720px;
         width: 100%;
         margin-top: 48px;
       }
@@ -1489,8 +1332,7 @@
       /* ---- How to try this guide ---- */
       .how-to {
         margin: 40px auto 0;
-        max-width: 1400px;
-        width: 100%;
+        max-width: 720px;
         padding: 28px 32px;
         background: var(--bg-1);
         border: 1px solid var(--border);
@@ -1581,8 +1423,7 @@
       /* ---- Guide tabs ---- */
       .guide-box {
         margin: 40px auto 0;
-        max-width: 1400px;
-        width: 100%;
+        max-width: 860px;
         background: var(--bg-1);
         border: 1px solid var(--border);
         border-radius: 14px;
@@ -2041,9 +1882,8 @@
       /* ---- How it works: 3 scenario explainer ---- */
       .explainer {
         margin: 40px auto 0;
-        max-width: 1400px;
-        width: 100%;
-        padding: 0 32px;
+        max-width: 1120px;
+        padding: 0 20px;
         text-align: left;
       }
 
@@ -2214,8 +2054,9 @@
       }
 
       .site-footer-inner {
-        width: 100%;
-        padding: 0 32px;
+        max-width: 1800px;
+        margin: 0 auto;
+        padding: 0 20px;
       }
 
       .site-footer h4 {
@@ -2349,7 +2190,6 @@
           flex-wrap: wrap;
           gap: 6px;
           justify-content: flex-end;
-          max-width: 100%;
         }
 
         .network-pill,
@@ -2357,19 +2197,6 @@
         .addr-pill {
           font-size: 11px;
           padding: 4px 8px;
-        }
-
-        .theme-toggle {
-          padding: 4px 8px;
-          font-size: 12px;
-        }
-
-        .addr-pill span,
-        .usdc-balance .amount {
-          max-width: 100px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
         }
 
         /* --- Hero: tighter --- */
@@ -2730,10 +2557,6 @@
             <span class="net-dot" id="netDot"></span>
             <span id="netLabel">Disconnected</span>
           </div>
-          <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
-            <span id="themeIcon">🌙</span>
-            <div class="toggle-track"><div class="toggle-thumb"></div></div>
-          </button>
           <div class="usdc-balance hidden" id="balanceBox">
             <span class="label">USDC</span>
             <span class="amount" id="usdcBal">0.00</span>
@@ -2863,75 +2686,75 @@
         <!-- ===== GUIDE TABS ===== -->
         <div class="guide-box" id="guideBox">
           <div class="guide-tabs">
-            <button class="guide-tab active" data-tab="start">🚀 Getting Started</button>
+            <button class="guide-tab active" data-tab="start">🚀 Başlangıç</button>
             <button class="guide-tab" data-tab="caller">📞 Caller</button>
             <button class="guide-tab" data-tab="provider">🏗️ Provider</button>
             <button class="guide-tab" data-tab="slash">⚡ Slash</button>
-            <button class="guide-tab" data-tab="faq">❓ FAQ</button>
+            <button class="guide-tab" data-tab="faq">❓ SSS</button>
           </div>
 
           <div class="guide-content active" data-content="start">
-            <div class="guide-section-title">What is ArcSLA?</div>
-            <p class="guide-lead">ArcSLA is an <strong>on-chain marketplace</strong> where service providers stake USDC to commit to an SLA, and callers pay per request. If a provider fails to respond in time, their stake is automatically slashed — no arbitrator or intermediary required.</p>
+            <div class="guide-section-title">ArcSLA nedir?</div>
+            <p class="guide-lead">ArcSLA, servis sağlayıcıların USDC stake ederek SLA taahhüdü verdiği, çağıranların her istek için ödeme yaptığı <strong>on-chain bir pazar yeri</strong>dir. Sağlayıcı zamanında yanıt vermezse stake'i otomatik olarak kesilir — hakem veya aracıya gerek yoktur.</p>
             <div class="guide-steps">
-              <div class="guide-step"><div class="guide-step-icon">1</div><div class="guide-step-body"><strong>Get Testnet USDC</strong><span><a href="https://faucet.circle.com/" target="_blank" rel="noreferrer">faucet.circle.com</a> → select Arc Testnet → paste your wallet address. On Arc, USDC is both the gas token and currency — one token is enough.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">2</div><div class="guide-step-body"><strong>Connect your wallet</strong><span>Click the "Connect wallet" button. MetaMask will prompt you to add the Arc Testnet network automatically — confirm it.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">3</div><div class="guide-step-body"><strong>Choose your role</strong><span>Follow the <em>Caller</em> or <em>Provider</em> flow step by step using the tabs above.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">1</div><div class="guide-step-body"><strong>Testnet USDC al</strong><span><a href="https://faucet.circle.com/" target="_blank" rel="noreferrer">faucet.circle.com</a> → Arc Testnet seç → cüzdan adresini yapıştır. Arc'ta USDC hem gas hem para birimi — tek token yeterli.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">2</div><div class="guide-step-body"><strong>Cüzdanı bağla</strong><span>"Connect wallet" butonuna tıkla. MetaMask Arc Testnet ağını otomatik eklemeni isteyecek, onayla.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">3</div><div class="guide-step-body"><strong>Rolünü seç</strong><span>Üstteki sekmelerde <em>Caller</em> ya da <em>Provider</em> akışını adım adım takip et.</span></div></div>
             </div>
-            <div class="guide-callout info"><strong>💡 Tip:</strong> You can use the same wallet as both caller and provider. Two separate MetaMask accounts are recommended if you want to test both roles independently.</div>
+            <div class="guide-callout info"><strong>💡 İpucu:</strong> Hem caller hem provider olarak aynı cüzdanı kullanabilirsin. İkisini ayrı test etmek için iki farklı MetaMask hesabı önerilir.</div>
           </div>
 
           <div class="guide-content" data-content="caller">
-            <div class="guide-section-title">Caller Flow</div>
-            <p class="guide-lead">You pay USDC to call a service. If the provider responds in time, the call completes. If not, you get a refund and the provider is penalized.</p>
+            <div class="guide-section-title">Caller (Çağıran) Akışı</div>
+            <p class="guide-lead">Servis çağırmak için USDC ödersin. Sağlayıcı zamanında yanıt verirse tamamlanır. Vermezse para iade edilir ve sağlayıcı cezalandırılır.</p>
             <div class="guide-steps">
-              <div class="guide-step"><div class="guide-step-icon">1</div><div class="guide-step-body"><strong>Select a provider</strong><span>Open the <em>Call a service</em> section in the left panel. Enter a Provider ID (e.g. <code>1</code>). Price and SLA duration are shown automatically.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">2</div><div class="guide-step-body"><strong>Send a request</strong><span>Type a payload (e.g. <code>ping</code>) in the request field. Click <em>Approve &amp; call</em> — MetaMask will ask you to sign two transactions: USDC approval + open call.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">3</div><div class="guide-step-body"><strong>Watch the countdown</strong><span>Your call appears in the <em>Your Calls</em> panel and the countdown begins. It shows "completed" once the provider responds.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">4</div><div class="guide-step-body"><strong>Timeout → Claim Slash</strong><span>Once the SLA window expires, the <code>claim slash</code> button appears. Click it → MetaMask opens → confirm. You receive a USDC refund + a bonus from the provider's stake.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">1</div><div class="guide-step-body"><strong>Provider seç</strong><span>Sol panelde <em>Call a service</em> bölümünü aç. Provider ID'ye bir numara gir (örn. <code>1</code>). Fiyat ve SLA süresi otomatik gösterilir.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">2</div><div class="guide-step-body"><strong>İstek gönder</strong><span>Request payload alanına bir metin yaz (örn. <code>ping</code>). <em>Approve &amp; call</em> butonuna tıkla — MetaMask iki işlem imzalamani isteyecek: USDC onayı + çağrı açma.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">3</div><div class="guide-step-body"><strong>Countdown'u takip et</strong><span><em>Your Calls</em> panelinde call'un görünür, geri sayım başlar. Sağlayıcı yanıt verirse "completed" olur.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">4</div><div class="guide-step-body"><strong>Timeout → Slash Talebi</strong><span>SLA süresi dolunca <code>claim slash</code> butonu çıkar. Tıkla → MetaMask açılır → onayla. USDC iade + provider stake'inden ceza bonus olarak gelir.</span></div></div>
             </div>
-            <div class="guide-callout warn"><strong>⏱ Note:</strong> You get an automatic alert when the countdown turns yellow (30s left) and red (10s left). If you are a provider, submit your receipt immediately!</div>
+            <div class="guide-callout warn"><strong>⏱ Dikkat:</strong> Countdown sarıya döndüğünde (30s kaldı) ve kırmızıya döndüğünde (10s kaldı) otomatik bildirim gelir. Provider iseniz makbuzu hemen gönderin!</div>
           </div>
 
           <div class="guide-content" data-content="provider">
-            <div class="guide-section-title">Provider Flow</div>
-            <p class="guide-lead">Stake USDC to become a service provider. Every successful response boosts your reputation. Miss the SLA window and a portion of your stake gets slashed.</p>
+            <div class="guide-section-title">Provider (Sağlayıcı) Akışı</div>
+            <p class="guide-lead">Stake koyarak servis sağlayıcı olursun. Her başarılı yanıt reputation'ını artırır. SLA süresini geçersen stake'inden para kesilir.</p>
             <div class="guide-steps">
-              <div class="guide-step"><div class="guide-step-icon">1</div><div class="guide-step-body"><strong>Register &amp; stake</strong><span>Open the <em>Register as provider</em> section. Set a minimum of <strong>10 USDC</strong> stake, price per call, response time and slash %. Leave the signer address blank to use your own wallet.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">2</div><div class="guide-step-body"><strong>Respond when called</strong><span>The SLA clock starts when a CallStarted event arrives. Open the <em>Submit receipt</em> section — Call ID is pre-filled, just enter your response payload.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">3</div><div class="guide-step-body"><strong>Sign &amp; submit receipt</strong><span>Click <em>Sign &amp; submit</em>. MetaMask will first ask for an off-chain signature, then an on-chain transaction. Unreadable characters are normal — you are signing raw bytes.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">4</div><div class="guide-step-body"><strong>Get paid &amp; earn reputation</strong><span>Once the receipt is accepted, the escrowed USDC is transferred to you. Each successful response increases your on-chain reputation.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">1</div><div class="guide-step-body"><strong>Kayıt ol &amp; stake yatır</strong><span><em>Register as provider</em> bölümünü aç. Min <strong>10 USDC</strong> stake, fiyat, yanıt süresi ve slash % belirle. Signer adresini boş bırakırsan kendi cüzdanın kullanılır.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">2</div><div class="guide-step-body"><strong>Çağrı gelince yanıt ver</strong><span>CallStarted event gelince SLA saati başlar. <em>Submit receipt</em> bölümünü aç, Call ID otomatik dolu, response payload gir.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">3</div><div class="guide-step-body"><strong>Makbuzu imzala &amp; gönder</strong><span><em>Sign &amp; submit</em> tıkla. MetaMask önce imza (off-chain), sonra zincir işlemi ister. Okunamayan karakterler normaldir — ham byte imzalıyorsun.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">4</div><div class="guide-step-body"><strong>Ödeme al &amp; reputation kazan</strong><span>Makbuz kabul edilince escrow USDC'si sana gelir. Her başarılı yanıt on-chain reputation'ını artırır.</span></div></div>
             </div>
-            <div class="guide-callout danger"><strong>🚨 Critical:</strong> You must be connected with your <strong>signer address</strong> to submit receipts. You're ready when <em>"✓ matches your wallet"</em> appears in the Your Provider panel.</div>
+            <div class="guide-callout danger"><strong>🚨 Kritik:</strong> Makbuz için <strong>signer adresi</strong> ile bağlı olmalısın. Your Provider panelinde <em>"✓ matches your wallet"</em> yazıyorsa hazırsın.</div>
             <div class="guide-kv">
               <div class="guide-kv-row"><span>Minimum stake</span><span>10 USDC</span></div>
-              <div class="guide-kv-row"><span>Minimum response time</span><span>10 seconds</span></div>
-              <div class="guide-kv-row"><span>Slash range</span><span>0% – 100%</span></div>
-              <div class="guide-kv-row"><span>Reputation formula</span><span>(successful + 2) / (total + 3) × 100</span></div>
+              <div class="guide-kv-row"><span>Minimum yanıt süresi</span><span>10 saniye</span></div>
+              <div class="guide-kv-row"><span>Slash aralığı</span><span>0% – 100%</span></div>
+              <div class="guide-kv-row"><span>Reputation formülü</span><span>(başarılı + 2) / (toplam + 3) × 100</span></div>
             </div>
           </div>
 
           <div class="guide-content" data-content="slash">
-            <div class="guide-section-title">Slash (Penalty) System</div>
-            <p class="guide-lead">The slash system is the mechanism that <strong>economically enforces</strong> providers to honor their SLA commitments. No arbitrator or trusted party is required.</p>
+            <div class="guide-section-title">Slash (Ceza) Sistemi</div>
+            <p class="guide-lead">Slash sistemi, sağlayıcıların SLA taahhütlerine uymasını <strong>ekonomik olarak zorlayan</strong> mekanizmadır. Hiçbir hakem veya güvenilir taraf gerektirmez.</p>
             <div class="guide-steps">
-              <div class="guide-step"><div class="guide-step-icon">⚡</div><div class="guide-step-body"><strong>When does a slash happen?</strong><span>If the provider does not call <code>submitReceipt()</code> within <code>maxResponseTime</code>, the deadline expires. The caller can then trigger a slash via <code>claimTimeout()</code>.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">💰</div><div class="guide-step-body"><strong>Calculation</strong><span><code>slash = stake × slashBps / 10000</code><br>e.g. 10 USDC stake + 20% slash → 2 USDC is deducted and sent to the caller.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">🔄</div><div class="guide-step-body"><strong>Fund flow</strong><span>The escrowed call fee is refunded to the caller. The slashed stake is also sent to the caller. The remaining stake stays with the provider.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">📉</div><div class="guide-step-body"><strong>Reputation impact</strong><span>Each slash decreases the provider's on-chain reputation counter, making them less likely to be chosen.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">⚡</div><div class="guide-step-body"><strong>Ne zaman slash olur?</strong><span>Sağlayıcı <code>maxResponseTime</code> içinde <code>submitReceipt()</code> çağırmazsa deadline dolar. Caller <code>claimTimeout()</code> ile slash başlatabilir.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">💰</div><div class="guide-step-body"><strong>Hesaplama</strong><span><code>slash = stake × slashBps / 10000</code><br>Örn. 10 USDC stake + %20 slash → 2 USDC kesilir ve caller'a gönderilir.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">🔄</div><div class="guide-step-body"><strong>Para akışı</strong><span>Escrow'daki call ücreti caller'a iade edilir. Slash edilen stake de caller'a gönderilir. Kalan stake provider'da kalır.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">📉</div><div class="guide-step-body"><strong>Reputation etkisi</strong><span>Her slash on-chain reputation sayacını düşürür, sağlayıcı daha az tercih edilir.</span></div></div>
             </div>
-            <div class="guide-callout info"><strong>Example:</strong> 10 USDC stake · 20% slash · 30s SLA. Caller pays 1 USDC. Provider does not respond within 30s. Caller clicks claim slash → <strong>1 USDC refund + 2 USDC bonus</strong>. Provider stake drops to 8 USDC.</div>
+            <div class="guide-callout info"><strong>Örnek:</strong> 10 USDC stake · %20 slash · 30s SLA. Caller 1 USDC öder. Provider 30s içinde yanıt vermez. Caller claim slash tıklar → <strong>1 USDC iade + 2 USDC bonus</strong>. Provider stake'i 8 USDC'ye düşer.</div>
           </div>
 
           <div class="guide-content" data-content="faq">
-            <div class="guide-section-title">Frequently Asked Questions</div>
+            <div class="guide-section-title">Sıkça Sorulan Sorular</div>
             <div class="faq-list">
-              <div class="faq-item"><div class="faq-q">I see unreadable characters in MetaMask — is that normal?</div><div class="faq-a">Yes, completely normal. When signing a receipt you are signing raw bytes (keccak256 hash). EIP-712 support is planned for v2.</div></div>
-              <div class="faq-item"><div class="faq-q">What is a Call ID and where does it come from?</div><div class="faq-a">It is a unique 32-byte identifier generated on-chain when <code>callService()</code> is called. It fills in automatically after <em>Approve &amp; call</em>.</div></div>
-              <div class="faq-item"><div class="faq-q">Can I submit a receipt after the SLA window has expired?</div><div class="faq-a">No. The contract rejects <code>submitReceipt()</code> after the deadline has passed. Keep an eye on the countdown timer!</div></div>
-              <div class="faq-item"><div class="faq-q">Can I be both a provider and a caller with the same wallet?</div><div class="faq-a">Technically yes, but two separate accounts are recommended for testing.</div></div>
-              <div class="faq-item"><div class="faq-q">Can I withdraw my stake?</div><div class="faq-a">You can unstake when there are no pending calls. A cooldown period applies.</div></div>
-              <div class="faq-item"><div class="faq-q">How is the reputation score calculated?</div><div class="faq-a">Bayesian: <code>(successful + 2) / (total + 3) × 100</code>. A new provider starts at 66, increases with each successful call and decreases with each slash.</div></div>
+              <div class="faq-item"><div class="faq-q">MetaMask'ta okunamayan karakterler görüyorum, normal mi?</div><div class="faq-a">Evet, tamamen normal. Makbuz imzalarken ham byte (keccak256 hash) imzalıyorsun. EIP-712 desteği v2'de planlanıyor.</div></div>
+              <div class="faq-item"><div class="faq-q">Call ID nedir, nereden geliyor?</div><div class="faq-a"><code>callService()</code> çağrıldığında zincir üzerinde üretilen benzersiz 32-byte tanımlayıcı. <em>Approve &amp; call</em> sonrası otomatik dolar.</div></div>
+              <div class="faq-item"><div class="faq-q">Makbuzu SLA süresi dolduktan sonra gönderebilir miyim?</div><div class="faq-a">Hayır. Kontrat deadline geçtikten sonra <code>submitReceipt()</code> reddeder. Countdown sayacına dikkat et!</div></div>
+              <div class="faq-item"><div class="faq-q">Aynı cüzdanla hem provider hem caller olabilir miyim?</div><div class="faq-a">Teknik olarak evet, ama test için iki ayrı hesap önerilir.</div></div>
+              <div class="faq-item"><div class="faq-q">Stake'imi geri çekebilir miyim?</div><div class="faq-a">Bekleyen (pending) çağrı yokken unstake edebilirsin. Cooldown süresi uygulanır.</div></div>
+              <div class="faq-item"><div class="faq-q">Reputation skoru nasıl hesaplanıyor?</div><div class="faq-a">Bayesian: <code>(başarılı + 2) / (toplam + 3) × 100</code>. Yeni provider 66 ile başlar, her başarılı çağrı artırır, her slash düşürür.</div></div>
             </div>
           </div>
         </div>
@@ -2971,7 +2794,7 @@
     <!-- Connected view                                               -->
     <!-- ============================================================ -->
     <main id="connectedView" class="hidden">
-      <div style="width: 100%; padding: 24px 32px 0;">
+      <div style="max-width: 1800px; margin: 0 auto; padding: 32px 48px 0;">
         <div class="live-bar">
           <div class="live-bar-left">
             <span class="live-dot-pulse"></span>
@@ -3027,7 +2850,7 @@
 
       <div class="grid">
         <!-- Left: Actions -->
-        <section class="panel" style="align-self: start;">
+        <section class="panel">
           <div class="panel-head">
             <h2>Actions</h2>
           </div>
@@ -3120,7 +2943,6 @@
             <details class="action" id="actionReceipt">
               <summary>Submit receipt (provider)</summary>
               <div class="action-body">
-                <div id="rcpDeadlineBanner" style="display:none; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:4px;"></div>
                 <div class="field">
                   <label>Call ID (bytes32) <span class="tip" data-tip="The unique ID assigned when the caller opened this call. If you just opened a call above, this field was auto-filled for you.">?</span></label>
                   <input type="text" id="rcpCallId" placeholder="0x… — auto-filled after Approve & call" />
@@ -3157,7 +2979,7 @@
         </section>
 
         <!-- Right: Live state -->
-        <section class="panel" style="align-self: start;">
+        <section class="panel">
           <div class="panel-head">
             <h2>Your provider</h2>
             <button class="btn btn-sm" id="btnRefreshProvider">Refresh</button>
@@ -3288,29 +3110,6 @@
     <!-- ============================================================ -->
     <!-- App                                                          -->
     <!-- ============================================================ -->
-    <script>
-      // -------- Dark Mode --------
-      const savedTheme = localStorage.getItem('arc-theme') || 'light';
-      document.documentElement.setAttribute('data-theme', savedTheme);
-
-      document.addEventListener('DOMContentLoaded', () => {
-        const btn = document.getElementById('themeToggle');
-        const icon = document.getElementById('themeIcon');
-        const update = () => {
-          const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-          icon.textContent = dark ? '☀️' : '🌙';
-        };
-        update();
-        btn.addEventListener('click', () => {
-          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-          const next = isDark ? 'light' : 'dark';
-          document.documentElement.setAttribute('data-theme', next);
-          localStorage.setItem('arc-theme', next);
-          update();
-        });
-      });
-    </script>
-
     <script>
       // -------- Config --------
       const CONFIG = {
@@ -3671,7 +3470,6 @@
             if (pending.length > 0) {
               const latest = pending[pending.length - 1];
               $("rcpCallId").value = latest.callId;
-              $("rcpCallId").dispatchEvent(new Event("input"));
               $("toCallId").value = latest.callId;
             }
           }
@@ -3849,7 +3647,7 @@
           .join("");
 
         $("allProvidersBox").innerHTML = `
-          <div class="provider-table-wrap"><table class="provider-table">
+          <table class="provider-table">
             <thead>
               <tr>
                 <th>ID</th>
@@ -3862,7 +3660,7 @@
               </tr>
             </thead>
             <tbody>${rows}</tbody>
-          </table></div>
+          </table>
         `;
 
         // Wire up row clicks → open modal
@@ -4521,28 +4319,20 @@
         try {
           const responseHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
 
-          // Build digest: keccak256(abi.encodePacked(callId, responseHash))
-          const digest = ethers.keccak256(ethers.concat([
+          // Build digest: keccak256(callId, responseHash), then EIP-191 prefix
+          // getBytes() converts hex strings to Uint8Array so concat works correctly
+          const inner = ethers.keccak256(ethers.concat([
             ethers.getBytes(callId),
             ethers.getBytes(responseHash)
           ]));
-
+          // Use signMessage on the raw bytes — ethers v6 wraps with \x19 prefix
           const tSign = toast({
             kind: "info",
             title: "Signing receipt…",
             detail: `<span class="spinner"></span> sign in your wallet`,
             timeout: 0,
           });
-
-          // Attempt 1: EIP-191 personal_sign — most contracts use this
-          // If contract does raw ecrecover on digest (no prefix), attempt 2 below catches it
-          let signature;
-          try {
-            signature = await state.signer.signMessage(ethers.getBytes(digest));
-          } catch (signErr) {
-            tSign.remove();
-            throw signErr;
-          }
+          const signature = await state.signer.signMessage(ethers.getBytes(inner));
           tSign.remove();
 
           const tSub = toast({
@@ -4551,45 +4341,9 @@
             detail: `<span class="spinner"></span> waiting for signature`,
             timeout: 0,
           });
-          let tx;
-          try {
-            tx = await state.payPerCall.submitReceipt(callId, responseHash, signature);
-          } catch (firstErr) {
-            // If "Invalid signature" → contract may expect raw sign (no EIP-191 prefix)
-            // Try again with eth_sign style: sign the raw digest bytes without prefix
-            const errMsg = firstErr?.message || "";
-            const isInvalidSig = errMsg.includes("0x559895a3") || errMsg.includes("0x025dbdd4") || errMsg.includes("Invalid signature");
-            if (isInvalidSig) {
-              tSub.remove();
-              const tRetry = toast({
-                kind: "info",
-                title: "Retrying with raw signature…",
-                detail: `<span class="spinner"></span> sign again in your wallet`,
-                timeout: 0,
-              });
-              try {
-                // Raw sign: use eth_sign which does NOT add EIP-191 prefix
-                const rawSig = await state.provider.send("eth_sign", [
-                  state.address,
-                  digest
-                ]);
-                tRetry.remove();
-                const tSub2 = toast({ kind: "info", title: "Submitting receipt…", detail: `<span class="spinner"></span> confirming`, timeout: 0 });
-                tx = await state.payPerCall.submitReceipt(callId, responseHash, rawSig);
-                await tx.wait();
-                tSub2.remove();
-              } catch (retryErr) {
-                tRetry.remove();
-                throw retryErr;
-              }
-            } else {
-              throw firstErr;
-            }
-          }
-          if (tx) {
-            try { await tx.wait(); } catch {}
-            tSub.remove();
-          }
+          const tx = await state.payPerCall.submitReceipt(callId, responseHash, signature);
+          await tx.wait();
+          tSub.remove();
           toast({
             kind: "ok",
             title: "Receipt submitted",
@@ -4836,8 +4590,8 @@
                   _warnedAt30.add(c.callId);
                   toast({
                     kind: "info",
-                    title: "⚠️ SLA deadline approaching",
-                    detail: `call ${short(c.callId, 6)} · ${secsLeft}s left — sign and submit receipt now`,
+                    title: "⚠️ SLA deadline yaklaşıyor",
+                    detail: `call ${short(c.callId, 6)} · ${secsLeft}s kaldı — makbuzu hemen imzalayın`,
                     timeout: 8000,
                   });
                 }
@@ -4845,7 +4599,7 @@
                   _warnedAt10.add(c.callId);
                   toast({
                     kind: "err",
-                    title: "🚨 Last 10 seconds!",
+                    title: "🚨 Son 10 saniye!",
                     detail: `call ${short(c.callId, 6)} · deadline dolmak üzere!`,
                     timeout: 12000,
                   });
@@ -4966,57 +4720,6 @@
         } else {
           if (hint) hint.style.color = "";
           if (hint) hint.textContent = "This is filled automatically after you click \"Approve & call\" above. Do not paste a private key here.";
-        }
-
-        // Check if this call is already expired — show banner
-        const banner = $("rcpDeadlineBanner");
-        if (!banner) return;
-        if (val.length === 66) {
-          const call = state.myCalls?.find(c => c.callId === val);
-          if (call) {
-            const now = Date.now() / 1000;
-            const deadline = call.deadline;
-            if (call.status === "slashed") {
-              banner.style.display = "block";
-              banner.style.background = "var(--danger-bg)";
-              banner.style.border = "1px solid rgba(220,38,38,0.3)";
-              banner.style.color = "var(--danger)";
-              banner.innerHTML = `🚫 <strong>This call was already slashed.</strong> The SLA window expired and the caller claimed a timeout. You cannot submit a receipt for it.`;
-              $("btnReceipt").disabled = true;
-            } else if (call.status === "completed") {
-              banner.style.display = "block";
-              banner.style.background = "var(--accent-bg)";
-              banner.style.border = "1px solid rgba(5,150,105,0.3)";
-              banner.style.color = "var(--accent)";
-              banner.innerHTML = `✅ <strong>This call was already completed.</strong> Receipt was submitted successfully.`;
-              $("btnReceipt").disabled = true;
-            } else if (deadline && now > deadline) {
-              banner.style.display = "block";
-              banner.style.background = "var(--danger-bg)";
-              banner.style.border = "1px solid rgba(220,38,38,0.3)";
-              banner.style.color = "var(--danger)";
-              const overBy = Math.round(now - deadline);
-              banner.innerHTML = `⏰ <strong>SLA deadline expired ${overBy}s ago.</strong> The contract will reject this receipt. The caller can now claim a timeout slash against you.`;
-              $("btnReceipt").disabled = true;
-            } else if (deadline) {
-              const remaining = Math.max(0, Math.round(deadline - now));
-              banner.style.display = "block";
-              banner.style.background = remaining < 15 ? "var(--danger-bg)" : remaining < 30 ? "var(--warn-bg)" : "var(--accent-bg)";
-              banner.style.border = `1px solid ${remaining < 15 ? "rgba(220,38,38,0.3)" : remaining < 30 ? "rgba(217,119,6,0.3)" : "rgba(5,150,105,0.3)"}`;
-              banner.style.color = remaining < 15 ? "var(--danger)" : remaining < 30 ? "var(--warn)" : "var(--accent)";
-              banner.innerHTML = `${remaining < 15 ? "🚨" : remaining < 30 ? "⚠️" : "✓"} <strong>${remaining}s remaining</strong> in the SLA window. Submit quickly!`;
-              $("btnReceipt").disabled = false;
-            } else {
-              banner.style.display = "none";
-              $("btnReceipt").disabled = false;
-            }
-          } else {
-            banner.style.display = "none";
-            $("btnReceipt").disabled = false;
-          }
-        } else {
-          banner.style.display = "none";
-          $("btnReceipt").disabled = false;
         }
       });
       $("btnTimeout").addEventListener("click", doTimeout);
