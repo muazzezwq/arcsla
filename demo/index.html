@@ -2695,7 +2695,7 @@
 
           <div class="guide-content active" data-content="start">
             <div class="guide-section-title">What is ArcSLA?</div>
-            <p class="guide-lead">ArcSLA is an <strong>on-chain marketplace</strong> where service providers commit to SLAs by staking USDC, and callers pay per request. If a provider fails to respond in time, their stake is automatically slashed — no arbitrator or intermediary required.</p>
+            <p class="guide-lead">ArcSLA is an <strong>on-chain marketplace</strong> where service providers stake USDC to commit to SLAs, and callers pay per request. If a provider fails to respond in time, their stake is automatically slashed — no arbitrator or intermediary required.</p>
             <div class="guide-steps">
               <div class="guide-step"><div class="guide-step-icon">1</div><div class="guide-step-body"><strong>Get testnet USDC</strong><span><a href="https://faucet.circle.com/" target="_blank" rel="noreferrer">faucet.circle.com</a> → select Arc Testnet → paste your wallet address. On Arc, USDC is both the gas token and currency — one token is all you need.</span></div></div>
               <div class="guide-step"><div class="guide-step-icon">2</div><div class="guide-step-body"><strong>Connect your wallet</strong><span>Click the "Connect wallet" button. MetaMask will prompt you to add the Arc Testnet network automatically — approve it.</span></div></div>
@@ -2713,7 +2713,7 @@
               <div class="guide-step"><div class="guide-step-icon">3</div><div class="guide-step-body"><strong>Track the countdown</strong><span>The call appears in your <em>Your Calls</em> panel and a countdown begins. If the provider responds, it becomes "completed".</span></div></div>
               <div class="guide-step"><div class="guide-step-icon">4</div><div class="guide-step-body"><strong>Timeout → Claim slash</strong><span>Once the SLA period expires, the <code>claim slash</code> button appears. Click it → MetaMask opens → confirm. Your payment is refunded plus a bonus from the provider's stake.</span></div></div>
             </div>
-            <div class="guide-callout warn"><strong>⏱ Note:</strong> Automatic alerts fire when the countdown turns yellow (30s left) and red (10s left). If you are a provider, submit your receipt immediately!</div>
+            <div class="guide-callout warn"><strong>⏱ Note:</strong> Alerts fire automatically when the countdown turns yellow (30s left) and red (10s left). If you are a provider, submit your receipt immediately!</div>
           </div>
 
           <div class="guide-content" data-content="provider">
@@ -2736,10 +2736,10 @@
 
           <div class="guide-content" data-content="slash">
             <div class="guide-section-title">Slash System</div>
-            <p class="guide-lead">The slash system is the <strong>economic enforcement mechanism</strong> that holds providers accountable to their SLA commitments. No arbitrator or trusted party is required.</p>
+            <p class="guide-lead">The slash system is the <strong>economic enforcement mechanism</strong> that holds providers accountable to their SLA commitments. No arbitrator or trusted party required.</p>
             <div class="guide-steps">
-              <div class="guide-step"><div class="guide-step-icon">⚡</div><div class="guide-step-body"><strong>When does a slash occur?</strong><span>If the provider does not call <code>submitReceipt()</code> within <code>maxResponseTime</code>, the deadline expires. The caller can then trigger a slash via <code>claimTimeout()</code>.</span></div></div>
-              <div class="guide-step"><div class="guide-step-icon">💰</div><div class="guide-step-body"><strong>Calculation</strong><span><code>slash = stake × slashBps / 10000</code><br>Example: 10 USDC stake + 20% slash → 2 USDC is deducted and sent to the caller.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">⚡</div><div class="guide-step-body"><strong>When does a slash occur?</strong><span>If the provider does not call <code>submitReceipt()</code> within <code>maxResponseTime</code>, the deadline expires. The caller can trigger a slash via <code>claimTimeout()</code>.</span></div></div>
+              <div class="guide-step"><div class="guide-step-icon">💰</div><div class="guide-step-body"><strong>Calculation</strong><span><code>slash = stake × slashBps / 10000</code><br>E.g. 10 USDC stake + 20% slash → 2 USDC is deducted and sent to the caller.</span></div></div>
               <div class="guide-step"><div class="guide-step-icon">🔄</div><div class="guide-step-body"><strong>Fund flow</strong><span>The escrowed call fee is refunded to the caller. The slashed stake is also sent to the caller. The remaining stake stays with the provider.</span></div></div>
               <div class="guide-step"><div class="guide-step-icon">📉</div><div class="guide-step-body"><strong>Reputation impact</strong><span>Each slash lowers the provider's on-chain reputation counter, making them less likely to be chosen.</span></div></div>
             </div>
@@ -2749,7 +2749,7 @@
           <div class="guide-content" data-content="faq">
             <div class="guide-section-title">Frequently Asked Questions</div>
             <div class="faq-list">
-              <div class="faq-item"><div class="faq-q">I see unreadable characters in MetaMask — is that normal?</div><div class="faq-a">Yes, completely normal. When signing a receipt, you are signing raw bytes (a keccak256 hash). EIP-712 typed-data signing is planned for v2.</div></div>
+              <div class="faq-item"><div class="faq-q">I see unreadable characters in MetaMask — is that normal?</div><div class="faq-a">Yes, completely normal. When signing a receipt you are signing raw bytes (a keccak256 hash). EIP-712 typed-data signing is planned for v2.</div></div>
               <div class="faq-item"><div class="faq-q">What is the Call ID and where does it come from?</div><div class="faq-a">It is the unique 32-byte identifier generated on-chain when <code>callService()</code> is invoked. It is auto-filled after you click <em>Approve &amp; call</em>.</div></div>
               <div class="faq-item"><div class="faq-q">Can I submit a receipt after the SLA deadline?</div><div class="faq-a">No. The contract rejects <code>submitReceipt()</code> once the deadline has passed. Keep an eye on the countdown timer!</div></div>
               <div class="faq-item"><div class="faq-q">Can I be both a provider and a caller with the same wallet?</div><div class="faq-a">Technically yes, but two separate accounts are recommended for testing.</div></div>
