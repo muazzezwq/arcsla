@@ -4481,20 +4481,28 @@
         try {
           const responseHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
 
-          // Build digest: keccak256(callId, responseHash), then EIP-191 prefix
-          // getBytes() converts hex strings to Uint8Array so concat works correctly
-          const inner = ethers.keccak256(ethers.concat([
+          // Build digest: keccak256(abi.encodePacked(callId, responseHash))
+          const digest = ethers.keccak256(ethers.concat([
             ethers.getBytes(callId),
             ethers.getBytes(responseHash)
           ]));
-          // Use signMessage on the raw bytes — ethers v6 wraps with \x19 prefix
+
           const tSign = toast({
             kind: "info",
             title: "Signing receipt…",
             detail: `<span class="spinner"></span> sign in your wallet`,
             timeout: 0,
           });
-          const signature = await state.signer.signMessage(ethers.getBytes(inner));
+
+          // Attempt 1: EIP-191 personal_sign — most contracts use this
+          // If contract does raw ecrecover on digest (no prefix), attempt 2 below catches it
+          let signature;
+          try {
+            signature = await state.signer.signMessage(ethers.getBytes(digest));
+          } catch (signErr) {
+            tSign.remove();
+            throw signErr;
+          }
           tSign.remove();
 
           const tSub = toast({
@@ -4503,9 +4511,45 @@
             detail: `<span class="spinner"></span> waiting for signature`,
             timeout: 0,
           });
-          const tx = await state.payPerCall.submitReceipt(callId, responseHash, signature);
-          await tx.wait();
-          tSub.remove();
+          let tx;
+          try {
+            tx = await state.payPerCall.submitReceipt(callId, responseHash, signature);
+          } catch (firstErr) {
+            // If "Invalid signature" → contract may expect raw sign (no EIP-191 prefix)
+            // Try again with eth_sign style: sign the raw digest bytes without prefix
+            const errMsg = firstErr?.message || "";
+            const isInvalidSig = errMsg.includes("0x559895a3") || errMsg.includes("0x025dbdd4") || errMsg.includes("Invalid signature");
+            if (isInvalidSig) {
+              tSub.remove();
+              const tRetry = toast({
+                kind: "info",
+                title: "Retrying with raw signature…",
+                detail: `<span class="spinner"></span> sign again in your wallet`,
+                timeout: 0,
+              });
+              try {
+                // Raw sign: use eth_sign which does NOT add EIP-191 prefix
+                const rawSig = await state.provider.send("eth_sign", [
+                  state.address,
+                  digest
+                ]);
+                tRetry.remove();
+                const tSub2 = toast({ kind: "info", title: "Submitting receipt…", detail: `<span class="spinner"></span> confirming`, timeout: 0 });
+                tx = await state.payPerCall.submitReceipt(callId, responseHash, rawSig);
+                await tx.wait();
+                tSub2.remove();
+              } catch (retryErr) {
+                tRetry.remove();
+                throw retryErr;
+              }
+            } else {
+              throw firstErr;
+            }
+          }
+          if (tx) {
+            try { await tx.wait(); } catch {}
+            tSub.remove();
+          }
           toast({
             kind: "ok",
             title: "Receipt submitted",
