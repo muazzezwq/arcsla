@@ -2536,7 +2536,7 @@
           <div class="stat-cell">
             <div class="stat-label">Calls</div>
             <div class="stat-value mono" id="statCalls">—</div>
-            <div class="stat-sub" id="statCallsSub">last 7 days</div>
+            <div class="stat-sub" id="statCallsSub">recent activity</div>
           </div>
           <div class="stat-cell">
             <div class="stat-label">Receipts</div>
@@ -2926,7 +2926,7 @@
        * last LOG_SCAN_BLOCKS in chunks of CHUNK_SIZE, merging the results.
        * If any chunk still fails we halve the chunk for retry — up to 3 levels.
        */
-      const LOG_SCAN_BLOCKS = 300_000; // total window to scan (~7 days at 2s block time on Arc)
+      const LOG_SCAN_BLOCKS = 100_000; // total window to scan (~2-3 days at 2s block time on Arc)
       const CHUNK_SIZE = 2_000;        // per-call block window
       const MIN_CHUNK = 250;           // smallest we'll shrink to on retry
 
