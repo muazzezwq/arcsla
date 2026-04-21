@@ -39,9 +39,142 @@
         --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
       }
 
-      * {
-        box-sizing: border-box;
+      [data-theme="dark"] {
+        --bg-0: #0a0a0a;
+        --bg-1: #111111;
+        --bg-2: #1a1a1a;
+        --bg-3: #222222;
+        --border: #2a2a2a;
+        --border-hi: #3a3a3a;
+        --text: #f0f0f0;
+        --text-dim: #a0a0a0;
+        --text-faint: #555555;
+        --accent: #10b981;
+        --accent-dim: #34d399;
+        --accent-bg: rgba(16, 185, 129, 0.1);
+        --danger: #f87171;
+        --danger-bg: rgba(248, 113, 113, 0.1);
+        --warn: #fbbf24;
+        --warn-bg: rgba(251, 191, 36, 0.1);
+        --info: #60a5fa;
+        --info-bg: rgba(96, 165, 250, 0.1);
+        --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+        --shadow-md: 0 1px 3px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4);
+        --shadow-lg: 0 4px 6px -1px rgba(0,0,0,0.5), 0 2px 4px -2px rgba(0,0,0,0.4);
       }
+
+      [data-theme="dark"] body {
+        background-image:
+          radial-gradient(ellipse 1200px 600px at 20% -10%, rgba(16,185,129,0.05), transparent 50%),
+          radial-gradient(ellipse 900px 500px at 110% 20%, rgba(96,165,250,0.03), transparent 50%);
+      }
+
+      [data-theme="dark"] .topbar {
+        background: rgba(10,10,10,0.85);
+      }
+
+      [data-theme="dark"] .field input,
+      [data-theme="dark"] .field textarea,
+      [data-theme="dark"] .field select {
+        background: var(--bg-2);
+        color: var(--text);
+        border-color: var(--border);
+      }
+
+      [data-theme="dark"] .panel,
+      [data-theme="dark"] .live-bar,
+      [data-theme="dark"] .stats-bar,
+      [data-theme="dark"] .guide-box,
+      [data-theme="dark"] .how-to,
+      [data-theme="dark"] .landing-feed-box,
+      [data-theme="dark"] .explainer .scenario {
+        box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      }
+
+      [data-theme="dark"] .network-pill,
+      [data-theme="dark"] .usdc-balance,
+      [data-theme="dark"] .addr-pill {
+        background: var(--bg-2);
+        border-color: var(--border);
+      }
+
+      [data-theme="dark"] details.action > summary:hover {
+        background: var(--bg-3);
+      }
+
+      [data-theme="dark"] .provider-table thead th {
+        background: var(--bg-2);
+      }
+
+      [data-theme="dark"] .stat-cell {
+        background: var(--bg-1);
+      }
+
+      [data-theme="dark"] .stat-cell:hover {
+        background: var(--bg-2);
+      }
+
+
+      [data-theme="dark"] .btn {
+        background: var(--bg-2);
+      }
+
+      [data-theme="dark"] .btn:hover:not(:disabled) {
+        background: var(--bg-3);
+      }
+
+      .theme-toggle {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        border: 1px solid var(--border);
+        background: var(--bg-2);
+        cursor: pointer;
+        font-size: 13px;
+        color: var(--text-dim);
+        transition: all 0.2s ease;
+        font-family: inherit;
+      }
+
+      .theme-toggle:hover {
+        border-color: var(--border-hi);
+        color: var(--text);
+      }
+
+      .theme-toggle .toggle-track {
+        width: 32px;
+        height: 18px;
+        border-radius: 9px;
+        background: var(--bg-3);
+        border: 1px solid var(--border-hi);
+        position: relative;
+        transition: background 0.2s ease;
+      }
+
+      .theme-toggle .toggle-thumb {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--text-faint);
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        transition: all 0.2s ease;
+      }
+
+      [data-theme="dark"] .theme-toggle .toggle-track {
+        background: var(--accent-bg);
+        border-color: var(--accent);
+      }
+
+      [data-theme="dark"] .theme-toggle .toggle-thumb {
+        background: var(--accent);
+        left: 16px;
+      }
+
+
 
       html,
       body {
@@ -100,9 +233,8 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 18px 48px;
-        max-width: 1800px;
-        margin: 0 auto;
+        padding: 14px 32px;
+        width: 100%;
       }
 
       .brand {
@@ -283,12 +415,11 @@
 
       /* ---- Layout ---- */
       .grid {
-        max-width: 1800px;
-        margin: 0 auto;
-        padding: 32px 48px 60px;
+        width: 100%;
+        padding: 24px 32px 60px;
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 28px;
+        gap: 24px;
       }
 
       @media (max-width: 1100px) {
@@ -1093,7 +1224,8 @@
       /* ---- Landing feed (pre-connect) ---- */
       .landing-feed-box {
         margin: 40px auto 0;
-        max-width: 720px;
+        max-width: 1400px;
+        width: 100%;
         background: var(--bg-1);
         border: 1px solid var(--border);
         border-radius: 12px;
@@ -1235,7 +1367,8 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 100px 24px 60px;
+        padding: 80px 32px 60px;
+        width: 100%;
         text-align: center;
       }
 
@@ -1245,7 +1378,7 @@
         letter-spacing: -0.04em;
         margin: 0 0 20px;
         line-height: 1.05;
-        background: linear-gradient(135deg, #0a0a0a 0%, #404040 100%);
+        background: linear-gradient(135deg, var(--text) 0%, var(--text-dim) 100%);
         -webkit-background-clip: text;
         background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -1269,7 +1402,7 @@
         display: grid;
         grid-template-columns: repeat(3, 1fr);
         gap: 20px;
-        max-width: 720px;
+        max-width: 900px;
         width: 100%;
         margin-top: 48px;
       }
@@ -1332,7 +1465,8 @@
       /* ---- How to try this guide ---- */
       .how-to {
         margin: 40px auto 0;
-        max-width: 720px;
+        max-width: 1400px;
+        width: 100%;
         padding: 28px 32px;
         background: var(--bg-1);
         border: 1px solid var(--border);
@@ -1423,7 +1557,8 @@
       /* ---- Guide tabs ---- */
       .guide-box {
         margin: 40px auto 0;
-        max-width: 860px;
+        max-width: 1400px;
+        width: 100%;
         background: var(--bg-1);
         border: 1px solid var(--border);
         border-radius: 14px;
@@ -1882,8 +2017,9 @@
       /* ---- How it works: 3 scenario explainer ---- */
       .explainer {
         margin: 40px auto 0;
-        max-width: 1120px;
-        padding: 0 20px;
+        max-width: 1400px;
+        width: 100%;
+        padding: 0 32px;
         text-align: left;
       }
 
@@ -2054,9 +2190,8 @@
       }
 
       .site-footer-inner {
-        max-width: 1800px;
-        margin: 0 auto;
-        padding: 0 20px;
+        width: 100%;
+        padding: 0 32px;
       }
 
       .site-footer h4 {
@@ -2557,6 +2692,10 @@
             <span class="net-dot" id="netDot"></span>
             <span id="netLabel">Disconnected</span>
           </div>
+          <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">
+            <span id="themeIcon">🌙</span>
+            <div class="toggle-track"><div class="toggle-thumb"></div></div>
+          </button>
           <div class="usdc-balance hidden" id="balanceBox">
             <span class="label">USDC</span>
             <span class="amount" id="usdcBal">0.00</span>
@@ -2794,7 +2933,7 @@
     <!-- Connected view                                               -->
     <!-- ============================================================ -->
     <main id="connectedView" class="hidden">
-      <div style="max-width: 1800px; margin: 0 auto; padding: 32px 48px 0;">
+      <div style="width: 100%; padding: 24px 32px 0;">
         <div class="live-bar">
           <div class="live-bar-left">
             <span class="live-dot-pulse"></span>
@@ -3110,6 +3249,29 @@
     <!-- ============================================================ -->
     <!-- App                                                          -->
     <!-- ============================================================ -->
+    <script>
+      // -------- Dark Mode --------
+      const savedTheme = localStorage.getItem('arc-theme') || 'light';
+      document.documentElement.setAttribute('data-theme', savedTheme);
+
+      document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('themeToggle');
+        const icon = document.getElementById('themeIcon');
+        const update = () => {
+          const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+          icon.textContent = dark ? '☀️' : '🌙';
+        };
+        update();
+        btn.addEventListener('click', () => {
+          const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+          const next = isDark ? 'light' : 'dark';
+          document.documentElement.setAttribute('data-theme', next);
+          localStorage.setItem('arc-theme', next);
+          update();
+        });
+      });
+    </script>
+
     <script>
       // -------- Config --------
       const CONFIG = {
