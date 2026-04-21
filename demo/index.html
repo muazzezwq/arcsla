@@ -373,6 +373,7 @@
         color: #ffffff;
         border-color: var(--accent);
         font-weight: 600;
+        width: 100%;
       }
 
       .btn-primary:hover:not(:disabled) {
@@ -418,11 +419,12 @@
         width: 100%;
         padding: 24px 32px 60px;
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: 420px minmax(0, 1fr);
         gap: 24px;
+        align-items: start;
       }
 
-      @media (max-width: 1100px) {
+      @media (max-width: 1200px) {
         .grid {
           grid-template-columns: 1fr;
         }
@@ -436,6 +438,7 @@
         overflow: hidden;
         box-shadow: var(--shadow-sm);
         transition: box-shadow 0.2s ease;
+        min-width: 0;
       }
 
       .panel:hover {
@@ -461,6 +464,8 @@
 
       .panel-body {
         padding: 22px;
+        min-width: 0;
+        overflow: hidden;
       }
 
       .panel-body.compact {
@@ -507,10 +512,10 @@
       }
 
       .action-body {
-        padding: 0 18px 18px;
+        padding: 0 16px 16px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
       }
 
       /* ---- Form fields ---- */
@@ -567,20 +572,25 @@
       /* ---- Provider info / call table ---- */
       .kv {
         display: grid;
-        grid-template-columns: 140px 1fr;
+        grid-template-columns: 130px 1fr;
         gap: 8px 14px;
         font-family: var(--font-mono);
         font-size: 12px;
+        width: 100%;
+        min-width: 0;
       }
 
       .kv dt {
         color: var(--text-faint);
+        white-space: nowrap;
       }
 
       .kv dd {
         margin: 0;
         color: var(--text);
         overflow-wrap: anywhere;
+        word-break: break-all;
+        min-width: 0;
       }
 
       /* ---- Live status bar (clock + SLA gauge) ---- */
@@ -666,6 +676,7 @@
           flex-direction: column;
           gap: 14px;
           align-items: stretch;
+          padding: 12px 16px;
         }
         .live-bar-left, .live-bar-right {
           justify-content: center;
@@ -694,8 +705,9 @@
 
       .stat-cell {
         background: var(--bg-1);
-        padding: 20px 22px;
+        padding: 18px 20px;
         transition: background 0.15s ease;
+        min-width: 0;
       }
 
       .stat-cell:hover {
@@ -713,11 +725,14 @@
 
       .stat-cell .stat-value {
         font-family: var(--font-mono);
-        font-size: 28px;
+        font-size: clamp(18px, 2vw, 28px);
         font-weight: 700;
         color: var(--text);
         line-height: 1.1;
         letter-spacing: -0.02em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .stat-cell .stat-value.accent {
@@ -737,8 +752,15 @@
       }
 
       /* ---- Provider list table ---- */
+      .provider-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+
       .provider-table {
         width: 100%;
+        min-width: 600px;
         border-collapse: collapse;
         font-family: var(--font-mono);
         font-size: 13px;
@@ -1033,11 +1055,12 @@
         padding: 12px 18px;
         border-bottom: 1px solid var(--border);
         display: grid;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
         gap: 12px;
         font-family: var(--font-mono);
         font-size: 12px;
+        min-width: 0;
       }
 
       .call-row:last-child {
@@ -1150,12 +1173,13 @@
       .feed-row {
         display: grid;
         grid-template-columns: auto auto 1fr auto;
-        gap: 14px;
+        gap: 10px;
         padding: 10px 18px;
         border-bottom: 1px solid var(--border);
         font-family: var(--font-mono);
         font-size: 11px;
         align-items: baseline;
+        min-width: 0;
       }
 
       .feed-row:last-child {
@@ -2325,6 +2349,7 @@
           flex-wrap: wrap;
           gap: 6px;
           justify-content: flex-end;
+          max-width: 100%;
         }
 
         .network-pill,
@@ -2332,6 +2357,19 @@
         .addr-pill {
           font-size: 11px;
           padding: 4px 8px;
+        }
+
+        .theme-toggle {
+          padding: 4px 8px;
+          font-size: 12px;
+        }
+
+        .addr-pill span,
+        .usdc-balance .amount {
+          max-width: 100px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         /* --- Hero: tighter --- */
@@ -2989,7 +3027,7 @@
 
       <div class="grid">
         <!-- Left: Actions -->
-        <section class="panel">
+        <section class="panel" style="align-self: start;">
           <div class="panel-head">
             <h2>Actions</h2>
           </div>
@@ -3082,6 +3120,7 @@
             <details class="action" id="actionReceipt">
               <summary>Submit receipt (provider)</summary>
               <div class="action-body">
+                <div id="rcpDeadlineBanner" style="display:none; padding:10px 14px; border-radius:8px; font-size:13px; margin-bottom:4px;"></div>
                 <div class="field">
                   <label>Call ID (bytes32) <span class="tip" data-tip="The unique ID assigned when the caller opened this call. If you just opened a call above, this field was auto-filled for you.">?</span></label>
                   <input type="text" id="rcpCallId" placeholder="0x… — auto-filled after Approve & call" />
@@ -3118,7 +3157,7 @@
         </section>
 
         <!-- Right: Live state -->
-        <section class="panel">
+        <section class="panel" style="align-self: start;">
           <div class="panel-head">
             <h2>Your provider</h2>
             <button class="btn btn-sm" id="btnRefreshProvider">Refresh</button>
@@ -3632,6 +3671,7 @@
             if (pending.length > 0) {
               const latest = pending[pending.length - 1];
               $("rcpCallId").value = latest.callId;
+              $("rcpCallId").dispatchEvent(new Event("input"));
               $("toCallId").value = latest.callId;
             }
           }
@@ -3809,7 +3849,7 @@
           .join("");
 
         $("allProvidersBox").innerHTML = `
-          <table class="provider-table">
+          <div class="provider-table-wrap"><table class="provider-table">
             <thead>
               <tr>
                 <th>ID</th>
@@ -3822,7 +3862,7 @@
               </tr>
             </thead>
             <tbody>${rows}</tbody>
-          </table>
+          </table></div>
         `;
 
         // Wire up row clicks → open modal
@@ -4926,6 +4966,57 @@
         } else {
           if (hint) hint.style.color = "";
           if (hint) hint.textContent = "This is filled automatically after you click \"Approve & call\" above. Do not paste a private key here.";
+        }
+
+        // Check if this call is already expired — show banner
+        const banner = $("rcpDeadlineBanner");
+        if (!banner) return;
+        if (val.length === 66) {
+          const call = state.myCalls?.find(c => c.callId === val);
+          if (call) {
+            const now = Date.now() / 1000;
+            const deadline = call.deadline;
+            if (call.status === "slashed") {
+              banner.style.display = "block";
+              banner.style.background = "var(--danger-bg)";
+              banner.style.border = "1px solid rgba(220,38,38,0.3)";
+              banner.style.color = "var(--danger)";
+              banner.innerHTML = `🚫 <strong>This call was already slashed.</strong> The SLA window expired and the caller claimed a timeout. You cannot submit a receipt for it.`;
+              $("btnReceipt").disabled = true;
+            } else if (call.status === "completed") {
+              banner.style.display = "block";
+              banner.style.background = "var(--accent-bg)";
+              banner.style.border = "1px solid rgba(5,150,105,0.3)";
+              banner.style.color = "var(--accent)";
+              banner.innerHTML = `✅ <strong>This call was already completed.</strong> Receipt was submitted successfully.`;
+              $("btnReceipt").disabled = true;
+            } else if (deadline && now > deadline) {
+              banner.style.display = "block";
+              banner.style.background = "var(--danger-bg)";
+              banner.style.border = "1px solid rgba(220,38,38,0.3)";
+              banner.style.color = "var(--danger)";
+              const overBy = Math.round(now - deadline);
+              banner.innerHTML = `⏰ <strong>SLA deadline expired ${overBy}s ago.</strong> The contract will reject this receipt. The caller can now claim a timeout slash against you.`;
+              $("btnReceipt").disabled = true;
+            } else if (deadline) {
+              const remaining = Math.max(0, Math.round(deadline - now));
+              banner.style.display = "block";
+              banner.style.background = remaining < 15 ? "var(--danger-bg)" : remaining < 30 ? "var(--warn-bg)" : "var(--accent-bg)";
+              banner.style.border = `1px solid ${remaining < 15 ? "rgba(220,38,38,0.3)" : remaining < 30 ? "rgba(217,119,6,0.3)" : "rgba(5,150,105,0.3)"}`;
+              banner.style.color = remaining < 15 ? "var(--danger)" : remaining < 30 ? "var(--warn)" : "var(--accent)";
+              banner.innerHTML = `${remaining < 15 ? "🚨" : remaining < 30 ? "⚠️" : "✓"} <strong>${remaining}s remaining</strong> in the SLA window. Submit quickly!`;
+              $("btnReceipt").disabled = false;
+            } else {
+              banner.style.display = "none";
+              $("btnReceipt").disabled = false;
+            }
+          } else {
+            banner.style.display = "none";
+            $("btnReceipt").disabled = false;
+          }
+        } else {
+          banner.style.display = "none";
+          $("btnReceipt").disabled = false;
         }
       });
       $("btnTimeout").addEventListener("click", doTimeout);
