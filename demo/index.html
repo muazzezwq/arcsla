@@ -948,12 +948,54 @@
       .countdown {
         font-family: var(--font-mono);
         font-size: 11px;
+        color: var(--accent);
+        transition: color 0.4s ease;
+      }
+
+      .countdown.warn {
         color: var(--warn);
+      }
+
+      .countdown.urgent {
+        color: var(--danger);
+        animation: urgentPulse 0.8s ease-in-out infinite;
       }
 
       .countdown.expired {
         color: var(--danger);
       }
+
+      @keyframes urgentPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+
+      /* SLA progress bar inside call-row */
+      .sla-bar-wrap {
+        margin-top: 6px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .sla-bar-track {
+        flex: 1;
+        height: 3px;
+        background: var(--bg-3);
+        border-radius: 2px;
+        overflow: hidden;
+        max-width: 180px;
+      }
+
+      .sla-bar-fill {
+        height: 100%;
+        border-radius: 2px;
+        transition: width 1s linear, background-color 0.4s ease;
+      }
+
+      .sla-bar-fill.ok   { background: var(--accent); }
+      .sla-bar-fill.warn { background: var(--warn); }
+      .sla-bar-fill.crit { background: var(--danger); }
 
       /* ---- Event feed ---- */
       .feed {
@@ -4077,12 +4119,23 @@
             body: `<span class="hi">${short(caller, 4)}</span> → provider #${providerId} · ${ethers.formatUnits(amount, state.usdcDecimals)} USDC escrowed`,
           });
           if (caller.toLowerCase() === state.address?.toLowerCase()) {
+            const deadlineNum = Number(deadline);
+            // Fetch on-chain startedAt for accurate progress bar
+            let startedAt = deadlineNum - 60; // fallback: guess 60s window
+            let totalSec = 60;
+            try {
+              const onChain = await state.payPerCall.getCall(callId);
+              startedAt = Number(onChain.startedAt);
+              totalSec = deadlineNum - startedAt;
+            } catch {}
             state.myCalls.set(callId, {
               callId,
               providerId,
               caller,
               amount,
-              deadline: Number(deadline),
+              deadline: deadlineNum,
+              startedAt,
+              totalSec,
               status: 1,
             });
             // Auto-fill receipt + timeout fields with the latest call id
@@ -4169,6 +4222,10 @@
         $("feed").prepend(row);
       }
 
+      // Track which calls have already triggered deadline warnings to avoid repeat toasts
+      const _warnedAt30 = new Set();
+      const _warnedAt10 = new Set();
+
       function renderCalls() {
         const calls = Array.from(state.myCalls.values()).reverse();
         if (calls.length === 0) {
@@ -4179,27 +4236,80 @@
 
         const statusName = ["—", "pending", "completed", "slashed"];
         const statusClass = ["", "status-pending", "status-completed", "status-slashed"];
+        const nowSec = Date.now() / 1000;
 
         $("callsBox").innerHTML = calls
           .map((c) => {
             const s = Number(c.status);
-            const canSubmit = s === 1 && c.deadline > Date.now() / 1000;
-            const canTimeout = s === 1 && c.deadline <= Date.now() / 1000;
+            const canSubmit = s === 1 && c.deadline > nowSec;
+            const canTimeout = s === 1 && c.deadline <= nowSec;
+            const secsLeft = c.deadline ? Math.round(c.deadline - nowSec) : null;
+
+            // SLA progress bar — needs startedAt; fall back to deadline - maxResponseTime if not stored
+            let barHtml = "";
+            if (s === 1 && c.deadline && secsLeft !== null) {
+              // Estimate total window: use provider's maxResponseTime if we stored it, else guess from deadline - startedAt
+              const totalSec = c.totalSec || (c.startedAt ? c.deadline - c.startedAt : null);
+              if (totalSec && totalSec > 0) {
+                const pct = Math.max(0, Math.min(100, (secsLeft / totalSec) * 100));
+                const barClass = pct > 40 ? "ok" : pct > 15 ? "warn" : "crit";
+                barHtml = `
+                  <div class="sla-bar-wrap">
+                    <div class="sla-bar-track">
+                      <div class="sla-bar-fill ${barClass}" style="width: ${pct.toFixed(1)}%"></div>
+                    </div>
+                  </div>`;
+              }
+            }
+
+            // Countdown label
+            let countdownHtml = "";
+            if (s === 1 && c.deadline) {
+              if (secsLeft <= 0) {
+                countdownHtml = ` · <span class="countdown expired">expired</span>`;
+              } else {
+                const mm = String(Math.floor(secsLeft / 60)).padStart(2, "0");
+                const ss = String(secsLeft % 60).padStart(2, "0");
+                const cls = secsLeft > 30 ? "" : secsLeft > 10 ? "warn" : "urgent";
+                const icon = secsLeft > 30 ? "⏱" : secsLeft > 10 ? "⚠️" : "🚨";
+                countdownHtml = ` · <span class="countdown ${cls}">${icon} ${mm}:${ss}</span>`;
+
+                // Trigger warning toasts
+                if (secsLeft <= 30 && secsLeft > 10 && !_warnedAt30.has(c.callId)) {
+                  _warnedAt30.add(c.callId);
+                  toast({
+                    kind: "info",
+                    title: "⚠️ SLA deadline yaklaşıyor",
+                    detail: `call ${short(c.callId, 6)} · ${secsLeft}s kaldı — makbuzu hemen imzalayın`,
+                    timeout: 8000,
+                  });
+                }
+                if (secsLeft <= 10 && !_warnedAt10.has(c.callId)) {
+                  _warnedAt10.add(c.callId);
+                  toast({
+                    kind: "err",
+                    title: "🚨 Son 10 saniye!",
+                    detail: `call ${short(c.callId, 6)} · deadline dolmak üzere!`,
+                    timeout: 12000,
+                  });
+                }
+              }
+            } else if (s !== 1 && c.deadline) {
+              countdownHtml = ` · ${new Date(c.deadline * 1000).toLocaleTimeString("en-US", { hour12: false })}`;
+            }
+
             return `
               <div class="call-row" data-callid="${c.callId}">
-                <div>
+                <div style="min-width: 0; flex: 1">
                   <div class="head-line">
                     <span class="status-dot ${statusClass[s]}"></span>
                     <span>call ${short(c.callId, 6)}</span>
                     <span style="color: var(--text-faint)">· provider #${c.providerId} · ${ethers.formatUnits(c.amount, state.usdcDecimals)} USDC</span>
                   </div>
                   <div class="sub-line">
-                    ${statusName[s]}${s === 1 && c.deadline ? (() => {
-                      const secsLeft = Math.round(c.deadline - Date.now() / 1000);
-                      if (secsLeft > 0) return ` · <span class="countdown">⏱ ${secsLeft}s left</span>`;
-                      return ` · <span class="countdown expired">expired</span>`;
-                    })() : (c.deadline ? ` · ${new Date(c.deadline * 1000).toLocaleTimeString("en-US", { hour12: false })}` : "")}
+                    ${statusName[s]}${countdownHtml}
                   </div>
+                  ${barHtml}
                 </div>
                 <div style="display: flex; gap: 6px">
                   ${canSubmit ? `<button class="btn btn-sm" data-action="fill-receipt" data-callid="${c.callId}">receipt</button>` : ""}
