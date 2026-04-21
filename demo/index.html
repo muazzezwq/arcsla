@@ -2648,7 +2648,7 @@
               <div class="action-body">
                 <div class="field">
                   <label>Call ID (bytes32) <span class="tip" data-tip="The unique ID assigned when the caller opened this call. If you just opened a call above, this field was auto-filled for you.">?</span></label>
-                  <input type="text" id="rcpCallId" placeholder="0x…" />
+                  <input type="text" id="rcpCallId" placeholder="0x… — auto-filled after Approve & call" />
                 </div>
                 <div class="field">
                   <label>Response payload <span class="tip" data-tip="The response you delivered off-chain. It gets hashed and the hash is signed with your provider's signer key (EIP-191). On-chain stores only the hash — your response content stays off-chain.">?</span></label>
@@ -3198,7 +3198,10 @@
             <dt>Status</dt>
             <dd>${data.active ? `<span style="color: var(--accent)">● active</span>` : `<span style="color: var(--danger)">● inactive</span>`}</dd>
             <dt>Signer</dt>
-            <dd>${short(data.signer, 6)}</dd>
+            <dd>${short(data.signer, 6)}${data.signer.toLowerCase() === state.address.toLowerCase()
+              ? ` <span style="color:var(--accent);font-size:11px">✓ matches your wallet</span>`
+              : ` <span style="color:var(--danger);font-size:11px">⚠ does not match your wallet — you cannot submit receipts with this wallet</span>`
+            }</dd>
             <dt>Stake</dt>
             <dd>${ethers.formatUnits(data.stake, d)} USDC</dd>
             <dt>Price / call</dt>
@@ -3940,6 +3943,22 @@
 
         const btn = $("btnReceipt");
         if (btn.disabled) return; // prevent double-click
+
+        // Check signer matches before even trying
+        if (state.providerInfo) {
+          const registeredSigner = state.providerInfo.data.signer.toLowerCase();
+          const connectedWallet = state.address.toLowerCase();
+          if (registeredSigner !== connectedWallet) {
+            toast({
+              kind: "err",
+              title: "Wrong wallet",
+              detail: `Your provider's signer is ${short(state.providerInfo.data.signer, 8)} but you're connected as ${short(state.address, 8)}. Switch to the correct wallet to submit receipts.`,
+              timeout: 10000,
+            });
+            return;
+          }
+        }
+
         btn.disabled = true;
         const origText = btn.textContent;
         btn.textContent = "Processing…";
@@ -4266,6 +4285,22 @@
       $("btnRegister").addEventListener("click", doRegister);
       $("btnCall").addEventListener("click", doCall);
       $("btnReceipt").addEventListener("click", doReceipt);
+
+      // Warn if user pastes something into Call ID that looks wrong
+      $("rcpCallId").addEventListener("input", () => {
+        const val = $("rcpCallId").value.trim();
+        const hint = $("rcpCallId").closest(".field").querySelector(".hint");
+        if (val.length === 66 && !/^0x[0-9a-fA-F]{64}$/.test(val)) {
+          if (hint) hint.style.color = "var(--danger)";
+          if (hint) hint.textContent = "⚠️ This doesn't look like a valid call ID. Call IDs are auto-filled after you click \"Approve & call\".";
+        } else if (val.length > 0 && val.length < 66) {
+          if (hint) hint.style.color = "var(--warn)";
+          if (hint) hint.textContent = "⚠️ Call ID should be 66 characters (0x + 64 hex). Wait for auto-fill after \"Approve & call\".";
+        } else {
+          if (hint) hint.style.color = "";
+          if (hint) hint.textContent = "This is filled automatically after you click \"Approve & call\" above. Do not paste a private key here.";
+        }
+      });
       $("btnTimeout").addEventListener("click", doTimeout);
       $("btnRefreshProvider").addEventListener("click", refreshAll);
 
