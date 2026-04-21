@@ -2982,13 +2982,22 @@
 
         try {
           state.provider = new ethers.BrowserProvider(window.ethereum);
-          // Force MetaMask popup every time — even if already connected.
-          // wallet_requestPermissions always shows the account selector.
-          await window.ethereum.request({
-            method: "wallet_requestPermissions",
-            params: [{ eth_accounts: {} }],
-          });
-          await state.provider.send("eth_requestAccounts", []);
+          // Force wallet popup every time — even if already connected.
+          // wallet_requestPermissions shows the account selector in MetaMask.
+          // Falls back to eth_requestAccounts for wallets that don't support it (Brave, Coinbase etc).
+          try {
+            await window.ethereum.request({
+              method: "wallet_requestPermissions",
+              params: [{ eth_accounts: {} }],
+            });
+          } catch (permErr) {
+            // 4200 = method not supported, -32601 = method not found
+            if (permErr.code === 4200 || permErr.code === -32601) {
+              await state.provider.send("eth_requestAccounts", []);
+            } else {
+              throw permErr; // user rejected or other real error
+            }
+          }
           state.signer = await state.provider.getSigner();
           state.address = await state.signer.getAddress();
 
@@ -3729,7 +3738,13 @@
           return;
         }
 
-        try {
+        const btn = $("btnRegister");
+        if (btn.disabled) return;
+        btn.disabled = true;
+        const origText = btn.textContent;
+        btn.textContent = "Processing…";
+
+                try {
           const stakeWei = ethers.parseUnits(stake, state.usdcDecimals);
           const priceWei = ethers.parseUnits(price, state.usdcDecimals);
           const slashBps = Math.round(slashPct * 100);
@@ -3782,6 +3797,9 @@
         } catch (e) {
           console.error(e);
           toast({ kind: "err", title: "Register failed", detail: friendlyError(e) });
+        } finally {
+          btn.disabled = false;
+          btn.textContent = origText;
         }
       }
 
@@ -3801,6 +3819,10 @@
         "0x00b8b8a3": "Call not in expected status.",
         "0x46ecc9cb": "Deadline has already passed.",
         "0x42b1e36b": "Deadline has not been reached yet.",
+        "0x559895a3": "Invalid signature — make sure you are signing with the registered provider signer.",
+        "0x8baa579f": "SLA deadline has passed — the provider missed the response window.",
+        "0xb3b42b14": "Call ID collision — please try again.",
+        "0xac4e7849": "Provider is not active.",
       };
 
       function friendlyError(e) {
@@ -3829,6 +3851,12 @@
           return;
         }
         const providerId = BigInt(idStr);
+
+        const btn = $("btnCall");
+        if (btn.disabled) return;
+        btn.disabled = true;
+        const origText = btn.textContent;
+        btn.textContent = "Processing…";
 
         try {
           // Fetch SLA terms to know the price
@@ -3894,6 +3922,9 @@
         } catch (e) {
           console.error(e);
           toast({ kind: "err", title: "Call failed", detail: friendlyError(e) });
+        } finally {
+          btn.disabled = false;
+          btn.textContent = origText;
         }
       }
 
@@ -3906,6 +3937,12 @@
           toast({ kind: "err", title: "Enter a 32-byte call ID" });
           return;
         }
+
+        const btn = $("btnReceipt");
+        if (btn.disabled) return; // prevent double-click
+        btn.disabled = true;
+        const origText = btn.textContent;
+        btn.textContent = "Processing…";
 
         try {
           const responseHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
@@ -3945,6 +3982,9 @@
         } catch (e) {
           console.error(e);
           toast({ kind: "err", title: "Receipt failed", detail: friendlyError(e) });
+        } finally {
+          btn.disabled = false;
+          btn.textContent = origText;
         }
       }
 
@@ -3955,6 +3995,12 @@
           toast({ kind: "err", title: "Enter a 32-byte call ID" });
           return;
         }
+
+        const btn = $("btnTimeout");
+        if (btn.disabled) return;
+        btn.disabled = true;
+        const origText = btn.textContent;
+        btn.textContent = "Processing…";
 
         try {
           const t = toast({
@@ -3975,6 +4021,9 @@
         } catch (e) {
           console.error(e);
           toast({ kind: "err", title: "Timeout failed", detail: friendlyError(e) });
+        } finally {
+          btn.disabled = false;
+          btn.textContent = origText;
         }
       }
 
@@ -4126,7 +4175,11 @@
                     <span style="color: var(--text-faint)">· provider #${c.providerId} · ${ethers.formatUnits(c.amount, state.usdcDecimals)} USDC</span>
                   </div>
                   <div class="sub-line">
-                    ${statusName[s]}${c.deadline ? ` · deadline ${new Date(c.deadline * 1000).toLocaleTimeString("en-US", { hour12: false })}` : ""}
+                    ${statusName[s]}${s === 1 && c.deadline ? (() => {
+                      const secsLeft = Math.round(c.deadline - Date.now() / 1000);
+                      if (secsLeft > 0) return ` · <span class="countdown">⏱ ${secsLeft}s left</span>`;
+                      return ` · <span class="countdown expired">expired</span>`;
+                    })() : (c.deadline ? ` · ${new Date(c.deadline * 1000).toLocaleTimeString("en-US", { hour12: false })}` : "")}
                   </div>
                 </div>
                 <div style="display: flex; gap: 6px">
@@ -4163,6 +4216,14 @@
       setInterval(() => {
         if (state.myCalls.size > 0) renderCalls();
       }, 1000);
+
+      // Auto-refresh leaderboard + network stats every 30 seconds
+      setInterval(() => {
+        if (state.address) {
+          refreshLeaderboard().catch(() => {});
+          refreshNetworkStats().catch(() => {});
+        }
+      }, 30_000);
 
       // -------- Provider preview on ID change --------
       $("callProviderId").addEventListener("blur", async (ev) => {
@@ -4249,6 +4310,7 @@
           try {
             state.usdcDecimals = Number(await usdcRo.decimals());
           } catch {}
+          const safeDecimals = state.usdcDecimals || 6;
 
           const latest = await ro.getBlockNumber();
           const from = Math.max(0, latest - LOG_SCAN_BLOCKS);
@@ -4273,7 +4335,7 @@
               tagText: "provider",
               blockNumber: l.blockNumber,
               txHash: l.transactionHash,
-              body: `#${l.args.providerId} registered by <span class="hi">${short(l.args.owner, 4)}</span> · ${ethers.formatUnits(l.args.stake, 6)} USDC staked`,
+              body: `#${l.args.providerId} registered by <span class="hi">${short(l.args.owner, 4)}</span> · ${ethers.formatUnits(l.args.stake, safeDecimals)} USDC staked`,
             });
           }
           for (const l of startedLogs) {
@@ -4282,7 +4344,7 @@
               tagText: "call opened",
               blockNumber: l.blockNumber,
               txHash: l.transactionHash,
-              body: `<span class="hi">${short(l.args.caller, 4)}</span> → provider #${l.args.providerId} · ${ethers.formatUnits(l.args.amount, 6)} USDC escrowed`,
+              body: `<span class="hi">${short(l.args.caller, 4)}</span> → provider #${l.args.providerId} · ${ethers.formatUnits(l.args.amount, safeDecimals)} USDC escrowed`,
             });
           }
           for (const l of receiptLogs) {
@@ -4300,7 +4362,7 @@
               tagText: "slashed",
               blockNumber: l.blockNumber,
               txHash: l.transactionHash,
-              body: `call <span class="hi">${short(l.args.callId, 6)}</span> timed out · refund ${ethers.formatUnits(l.args.refunded, 6)} + slash ${ethers.formatUnits(l.args.slashed, 6)} USDC`,
+              body: `call <span class="hi">${short(l.args.callId, 6)}</span> timed out · refund ${ethers.formatUnits(l.args.refunded, safeDecimals)} + slash ${ethers.formatUnits(l.args.slashed, safeDecimals)} USDC`,
             });
           }
 
@@ -4360,7 +4422,7 @@
               tagText: "call opened",
               blockNumber: ev.log?.blockNumber,
               txHash: ev.log?.transactionHash,
-              body: `<span class="hi">${short(caller, 4)}</span> → provider #${providerId} · ${ethers.formatUnits(amount, 6)} USDC escrowed`,
+              body: `<span class="hi">${short(caller, 4)}</span> → provider #${providerId} · ${ethers.formatUnits(amount, safeDecimals)} USDC escrowed`,
             });
           });
           payPerCallRo.on("ReceiptSubmitted", (callId, _rh, ev) => {
@@ -4378,7 +4440,7 @@
               tagText: "slashed",
               blockNumber: ev.log?.blockNumber,
               txHash: ev.log?.transactionHash,
-              body: `call <span class="hi">${short(callId, 6)}</span> timed out · refund ${ethers.formatUnits(refunded, 6)} + slash ${ethers.formatUnits(slashed, 6)} USDC`,
+              body: `call <span class="hi">${short(callId, 6)}</span> timed out · refund ${ethers.formatUnits(refunded, safeDecimals)} + slash ${ethers.formatUnits(slashed, safeDecimals)} USDC`,
             });
           });
           registryRo.on("ProviderRegistered", (providerId, owner, _s, stake, _p, _m, _b, _e, ev) => {
@@ -4387,7 +4449,7 @@
               tagText: "provider",
               blockNumber: ev.log?.blockNumber,
               txHash: ev.log?.transactionHash,
-              body: `#${providerId} registered by <span class="hi">${short(owner, 4)}</span> · ${ethers.formatUnits(stake, 6)} USDC staked`,
+              body: `#${providerId} registered by <span class="hi">${short(owner, 4)}</span> · ${ethers.formatUnits(stake, safeDecimals)} USDC staked`,
             });
           });
         } catch (e) {
