@@ -3819,18 +3819,29 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           });
         } catch (e) {
           if (e.code === 4902) {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [
-                {
-                  chainId: CONFIG.chainIdHex,
-                  chainName: CONFIG.chainName,
-                  rpcUrls: [CONFIG.rpcUrl],
-                  nativeCurrency: { name: "Arc ETH", symbol: "ETH", decimals: 18 },
-                  blockExplorerUrls: [CONFIG.explorerBase],
-                },
-              ],
-            });
+            // Network not added yet — prompt to add it
+            try {
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [
+                  {
+                    chainId: CONFIG.chainIdHex,
+                    chainName: CONFIG.chainName,
+                    rpcUrls: [CONFIG.rpcUrl],
+                    nativeCurrency: { name: "Arc ETH", symbol: "ETH", decimals: 18 },
+                    blockExplorerUrls: [CONFIG.explorerBase],
+                  },
+                ],
+              });
+            } catch (addErr) {
+              // User rejected adding the network
+              if (addErr.code === 4001 || addErr.code === "ACTION_REJECTED") {
+                throw new Error("Please add Arc Testnet to MetaMask to continue. You can also add it manually from faucet.circle.com.");
+              }
+              throw addErr;
+            }
+          } else if (e.code === 4001 || e.code === "ACTION_REJECTED") {
+            throw new Error("Please switch to Arc Testnet in MetaMask to use ArcSLA.");
           } else {
             throw e;
           }
@@ -3940,9 +3951,15 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           const receiptSet = new Set(receiptLogs.filter(l => myCallIds.has(l.args.callId)).map(l => l.args.callId));
           const slashedSet = new Set(slashedLogs.filter(l => myCallIds.has(l.args.callId)).map(l => l.args.callId));
 
-          for (const l of startedLogs) {
+          // Fetch all on-chain call details in parallel (not one-by-one)
+          const newLogs = startedLogs.filter(l => !state.myCalls.has(l.args.callId));
+          const onChainDetails = await Promise.all(
+            newLogs.map(l => state.payPerCall.getCall(l.args.callId).catch(() => null))
+          );
+
+          for (let i = 0; i < newLogs.length; i++) {
+            const l = newLogs[i];
             const callId = l.args.callId;
-            if (state.myCalls.has(callId)) continue;
             const deadlineNum = Number(l.args.deadline);
             let status = 1;
             if (receiptSet.has(callId)) status = 2;
@@ -3950,26 +3967,27 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
             let startedAt = deadlineNum - 60;
             let totalSec = 60;
-            try {
-              const onChain = await state.payPerCall.getCall(callId);
+            const onChain = onChainDetails[i];
+            if (onChain) {
               startedAt = Number(onChain.startedAt);
               totalSec = deadlineNum - startedAt;
-            } catch {}
+            }
 
             state.myCalls.set(callId, {
               callId,
-              providerId: l.args.providerId,
+              providerId: Number(l.args.providerId),
               caller: l.args.caller,
               amount: l.args.amount,
               deadline: deadlineNum,
               startedAt,
               totalSec,
-              status,
+              status: Number(status), // always number, never BigInt
             });
           }
 
           if (state.myCalls.size > 0) {
             renderCalls();
+            renderMyStats();
             const pending = Array.from(state.myCalls.values()).filter(c => c.status === 1);
             if (pending.length > 0) {
               const latest = pending[pending.length - 1];
@@ -4178,17 +4196,36 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           });
       }
 
+      // -------- Shared log cache (avoids duplicate safeQuery across functions) --------
+      const _logCache = { ts: 0, started: null, receipts: null, slashed: null };
+      const LOG_CACHE_TTL = 25_000; // ms — refresh every 25s max
+
+      async function getCachedLogs() {
+        const now = Date.now();
+        if (_logCache.started && (now - _logCache.ts) < LOG_CACHE_TTL) {
+          return { started: _logCache.started, receipts: _logCache.receipts, slashed: _logCache.slashed };
+        }
+        const [started, receipts, slashed] = await Promise.all([
+          safeQuery(state.payPerCall, "CallStarted"),
+          safeQuery(state.payPerCall, "ReceiptSubmitted"),
+          safeQuery(state.payPerCall, "CallSlashed"),
+        ]);
+        _logCache.started  = started;
+        _logCache.receipts = receipts;
+        _logCache.slashed  = slashed;
+        _logCache.ts       = now;
+        return { started, receipts, slashed };
+      }
+
+      // Invalidate cache when a new on-chain event occurs
+      function invalidateLogCache() { _logCache.ts = 0; }
+
       // -------- Network stats (on-chain aggregate) --------
       async function refreshNetworkStats() {
         try {
-          // Providers count comes directly from contract state (survives chain age).
-          // Calls/receipts/slashes still use event scan since the contract doesn't
-          // expose counters for those (would cost storage gas per tx).
-          const [nextId, startedLogs, receiptLogs, slashedLogs] = await Promise.all([
+          const [nextId, { started: startedLogs, receipts: receiptLogs, slashed: slashedLogs }] = await Promise.all([
             state.registry.nextProviderId().catch(() => 1n),
-            safeQuery(state.payPerCall, "CallStarted"),
-            safeQuery(state.payPerCall, "ReceiptSubmitted"),
-            safeQuery(state.payPerCall, "CallSlashed"),
+            getCachedLogs(),
           ]);
 
           const providersCount = Math.max(0, Number(nextId) - 1);
@@ -4318,7 +4355,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               const selfClass = isSelf ? " is-self" : "";
               const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank;
               const fillClass = rep >= 80 ? "" : rep >= 50 ? "warn" : "crit";
-              const callsTotal = (state.networkStats?.receipts ?? 0);
               return `
                 <div class="lb-row${topClass}${selfClass}" data-pid="${p.id}">
                   <div class="lb-rank">${medal}</div>
@@ -4350,11 +4386,8 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       // -------- Activity chart (hourly buckets, last 24h) --------
       async function refreshActivityChart() {
         try {
-          // Reuse event log queries we already have from refreshNetworkStats
-          const [startedLogs, slashedLogs] = await Promise.all([
-            safeQuery(state.payPerCall, "CallStarted"),
-            safeQuery(state.payPerCall, "CallSlashed"),
-          ]);
+          // Reuse cached logs — avoids duplicate RPC calls
+          const { started: startedLogs, slashed: slashedLogs } = await getCachedLogs();
 
           // Get current block and estimate timestamps backwards.
           // Arc testnet has ~2s block time; last 24h ~= 43200 blocks.
@@ -4476,17 +4509,15 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             state.registry.slashedCalls(providerId),
           ]);
 
-          // Fetch all calls for this provider by filtering CallStarted events
-          const startedLogs = await safeQuery(
-            state.payPerCall,
-            "CallStarted",
-            state.payPerCall.filters.CallStarted(null, providerId),
-          );
-          const receiptLogs = await safeQuery(state.payPerCall, "ReceiptSubmitted");
-          const slashedLogs = await safeQuery(state.payPerCall, "CallSlashed");
-
-          const receiptSet = new Set(receiptLogs.map((l) => l.args.callId));
-          const slashedSet = new Set(slashedLogs.map((l) => l.args.callId));
+          // Fetch calls for this specific provider + use cached global logs
+          const [startedLogs, { receipts: allReceiptLogs, slashed: allSlashedLogs }] = await Promise.all([
+            safeQuery(state.payPerCall, "CallStarted", state.payPerCall.filters.CallStarted(null, providerId)),
+            getCachedLogs(),
+          ]);
+          // Build call ID set for this provider only — filter receipts/slashes to match
+          const providerCallIds = new Set(startedLogs.map(l => l.args.callId));
+          const receiptSet = new Set(allReceiptLogs.filter(l => providerCallIds.has(l.args.callId)).map(l => l.args.callId));
+          const slashedSet = new Set(allSlashedLogs.filter(l => providerCallIds.has(l.args.callId)).map(l => l.args.callId));
 
           const calls = startedLogs.map((l) => {
             const cid = l.args.callId;
@@ -4617,19 +4648,33 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           `;
 
           // Compute average response time from CallStarted vs ReceiptSubmitted events
+          // Uses cached receipt logs — no additional RPC call needed
           (async () => {
             try {
               const startMap = new Map();
               for (const l of startedLogs) {
                 startMap.set(l.args.callId, l.blockNumber);
               }
-              const receiptFull = await safeQuery(state.payPerCall, "ReceiptSubmitted");
-              const BLOCK_TIME = 2; // Arc ~2s
+              // Use cached logs; filter to only this provider's calls
+              const { receipts: receiptFull } = await getCachedLogs();
+              // Measure real block time from 2 anchor blocks instead of hardcoded 2s
+              let blockTimeSec = 2;
+              try {
+                const rpcProv = state.payPerCall.runner.provider;
+                const latest = await rpcProv.getBlockNumber();
+                const [blkOld, blkNew] = await Promise.all([
+                  rpcProv.getBlock(Math.max(1, latest - 500)),
+                  rpcProv.getBlock(latest),
+                ]);
+                if (blkOld && blkNew && blkNew.number > blkOld.number) {
+                  blockTimeSec = (blkNew.timestamp - blkOld.timestamp) / (blkNew.number - blkOld.number);
+                }
+              } catch {}
               const diffs = [];
               for (const r of receiptFull) {
                 const startBlock = startMap.get(r.args.callId);
                 if (startBlock != null) {
-                  diffs.push((r.blockNumber - startBlock) * BLOCK_TIME);
+                  diffs.push(Math.round((r.blockNumber - startBlock) * blockTimeSec));
                 }
               }
               const avgEl = document.getElementById("modalAvgResp");
@@ -4784,7 +4829,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         const origText = btn.textContent;
         btn.textContent = "Processing…";
 
-                try {
+        try {
           const stakeWei = ethers.parseUnits(stake, state.usdcDecimals);
           const priceWei = ethers.parseUnits(price, state.usdcDecimals);
           const slashBps = Math.round(slashPct * 100);
@@ -4797,8 +4842,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             timeout: 0,
           });
           const txA = await state.usdc.approve(CONFIG.registry, stakeWei);
-          tApprove.querySelector(".title").textContent = "Approval sent";
-          tApprove.querySelector(".detail").innerHTML = `tx ${short(txA.hash, 6)}`;
+          // Safe: only update if selectors exist (toast structure may vary)
+          const _tATitle = tApprove.querySelector(".title");
+          const _tADetail = tApprove.querySelector(".detail");
+          if (_tATitle) _tATitle.textContent = "Approval sent";
+          if (_tADetail) _tADetail.innerHTML = `tx ${short(txA.hash, 6)}`;
           await txA.wait();
           tApprove.remove();
           toast({
@@ -4918,6 +4966,10 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           }
           const price = p.pricePerCall;
 
+          // Check session budget before proceeding
+          const priceFloat = parseFloat(ethers.formatUnits(price, state.usdcDecimals));
+          if (!checkBudget(priceFloat)) return; // finally block re-enables btn
+
           // Approve if needed — approve only the exact price, not unlimited
           const currentAllowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
           if (currentAllowance < price) {
@@ -4969,12 +5021,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             $("rcpCallId").value = callId;
             $("rcpCallId").dispatchEvent(new Event("input"));
             $("toCallId").value = callId;
-            // Record spend + webhook
-            try {
-              const priceNum = parseFloat(ethers.formatUnits((await state.registry.getProvider(providerId)).pricePerCall, state.usdcDecimals));
-              recordSpend(priceNum);
-              sendWebhookNotification(`New call opened → provider #${providerId} · call ${short(callId, 8)}`);
-            } catch {}
+            // Record spend (use priceFloat already fetched above — no extra RPC)
+            recordSpend(priceFloat);
+            sendWebhookNotification(`New call opened → provider #${providerId} · call ${short(callId, 8)}`).catch(() => {});
           }
           await refreshAll();
         } catch (e) {
@@ -5213,7 +5262,14 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       // -------- Event subscription --------
+      let _eventsSubscribed = false;
       function subscribeToEvents() {
+        if (_eventsSubscribed) {
+          // Already subscribed — remove old listeners first to prevent duplicates
+          try { state.payPerCall.removeAllListeners(); } catch {}
+          try { state.registry.removeAllListeners(); } catch {}
+        }
+        _eventsSubscribed = true;
         // Clear empty state once first event arrives
         let gotFirst = false;
         const clearEmpty = () => {
@@ -5230,6 +5286,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           const key = `${log.transactionHash}:${log.index ?? log.logIndex ?? 0}`;
           if (state.seenEvents.has(key)) return false;
           state.seenEvents.add(key);
+          // Cap to prevent unbounded memory growth in long sessions
+          if (state.seenEvents.size > 2000) {
+            const oldest = state.seenEvents.values().next().value;
+            state.seenEvents.delete(oldest);
+          }
           return true;
         };
 
@@ -5254,13 +5315,13 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             } catch {}
             state.myCalls.set(callId, {
               callId,
-              providerId,
+              providerId: Number(providerId),
               caller,
               amount,
               deadline: deadlineNum,
               startedAt,
               totalSec,
-              status: 1,
+              status: 1, // always number
             });
             // Auto-fill receipt + timeout fields with the latest call id
             $("rcpCallId").value = callId;
@@ -5268,6 +5329,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             $("toCallId").value = callId;
             renderCalls();
           }
+          invalidateLogCache();
           debouncedRefresh();
           bumpUnseen();
         });
@@ -5282,9 +5344,10 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             body: `receipt signed for call <span class="hi">${short(callId, 6)}</span>`,
           });
           if (state.myCalls.has(callId)) {
-            state.myCalls.get(callId).status = 2;
+            state.myCalls.get(callId).status = 2; // completed
             renderCalls();
           }
+          invalidateLogCache();
           debouncedRefresh();
           bumpUnseen();
         });
@@ -5299,9 +5362,10 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             body: `call <span class="hi">${short(callId, 6)}</span> timed out · refund ${ethers.formatUnits(refunded, state.usdcDecimals)} + slash ${ethers.formatUnits(slashed, state.usdcDecimals)} USDC`,
           });
           if (state.myCalls.has(callId)) {
-            state.myCalls.get(callId).status = 3;
+            state.myCalls.get(callId).status = 3; // slashed
             renderCalls();
           }
+          invalidateLogCache();
           debouncedRefresh();
           bumpUnseen();
         });
@@ -5345,6 +5409,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           ${txHash ? `<a class="feed-link" href="${txLink(txHash)}" target="_blank" rel="noreferrer" title="${txHash} — click to open in Arcscan">${short(txHash, 4)} ↗</a>` : ""}
         `;
         $("feed").prepend(row);
+        // Cap feed at 50 entries to prevent unbounded DOM growth
+        const feedEl = $("feed");
+        while (feedEl.children.length > 50) {
+          feedEl.removeChild(feedEl.lastChild);
+        }
       }
 
 
@@ -5529,8 +5598,55 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         _countdownStarted = true;
         setInterval(() => {
           if (!state.address) return;
-          const hasPending = Array.from(state.myCalls.values()).some(c => Number(c.status) === 1);
-          if (hasPending) renderCalls();
+          const nowSec = Date.now() / 1000;
+          const pendingCalls = Array.from(state.myCalls.values()).filter(c => Number(c.status) === 1);
+          if (pendingCalls.length === 0) return;
+
+          let needsFullRender = false;
+          for (const c of pendingCalls) {
+            if (!c.deadline) continue;
+            const secsLeft = Math.round(c.deadline - nowSec);
+            // Find the row in the DOM and update only its countdown span
+            const row = document.querySelector(`[data-callid="${c.callId}"]`);
+            if (!row) { needsFullRender = true; continue; } // row missing — need full render
+
+            const countdownEl = row.querySelector(".countdown");
+            const subLine = row.querySelector(".sub-line");
+            const slashBtn = row.querySelector('[data-action="fill-timeout"]');
+            const receiptBtn = row.querySelector('[data-action="fill-receipt"]');
+
+            if (secsLeft <= 0) {
+              // Transition: pending → expired (need to swap buttons)
+              if (receiptBtn || !slashBtn) { needsFullRender = true; break; }
+              if (countdownEl) { countdownEl.className = "countdown expired"; countdownEl.textContent = "expired"; }
+            } else {
+              const mm = String(Math.floor(secsLeft / 60)).padStart(2, "0");
+              const ss = String(secsLeft % 60).padStart(2, "0");
+              const cls = secsLeft > 30 ? "" : secsLeft > 10 ? "warn" : "urgent";
+              const icon = secsLeft > 30 ? "⏱" : secsLeft > 10 ? "⚠️" : "🚨";
+              if (countdownEl) {
+                countdownEl.className = `countdown ${cls}`;
+                countdownEl.textContent = `${icon} ${mm}:${ss}`;
+              }
+              // Update SLA bar width
+              const barFill = row.querySelector(".sla-bar-fill");
+              if (barFill && c.totalSec > 0) {
+                const pct = Math.max(0, Math.min(100, (secsLeft / c.totalSec) * 100));
+                barFill.style.width = pct.toFixed(1) + "%";
+                barFill.className = "sla-bar-fill " + (pct > 40 ? "ok" : pct > 15 ? "warn" : "crit");
+              }
+            }
+            // Warning toasts
+            if (secsLeft <= 30 && secsLeft > 10 && !_warnedAt30.has(c.callId)) {
+              _warnedAt30.add(c.callId);
+              toast({ kind: "info", title: "⚠️ SLA deadline approaching", detail: `call ${short(c.callId, 6)} · ${secsLeft}s left — sign receipt now`, timeout: 8000 });
+            }
+            if (secsLeft <= 10 && secsLeft > 0 && !_warnedAt10.has(c.callId)) {
+              _warnedAt10.add(c.callId);
+              toast({ kind: "err", title: "🚨 Last 10 seconds!", detail: `call ${short(c.callId, 6)} · deadline expiring!`, timeout: 12000 });
+            }
+          }
+          if (needsFullRender) renderCalls();
         }, 1000);
       }
 
@@ -5681,6 +5797,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
           // Total needed
           const totalNeeded = providerData.reduce((acc, { p }) => p && p.active ? acc + p.pricePerCall : acc, 0n);
+          // Check session budget
+          if (totalNeeded > 0n) {
+            const totalFloat = parseFloat(ethers.formatUnits(totalNeeded, state.usdcDecimals));
+            if (!checkBudget(totalFloat)) { btn.disabled = false; btn.textContent = orig; return; }
+          }
           if (totalNeeded > 0n) {
             const allowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
             if (allowance < totalNeeded) {
@@ -6453,9 +6574,7 @@ console.log("call opened:", tx.hash);`;
         return results;
       }
 
-      // keccak256 topic selectors (pre-computed)
-      const TOPIC_CALL_STARTED       = "0x" + "f5e6c3b0c0b9b7e1e0e4b7c1d0e4a5e3b2f4a1e2d3c4b5a6e7f8091a2b3c4d5e6f7".slice(0, 64);
-      // We'll compute them properly using ethers.id
+      // keccak256 topic selectors (computed correctly via ethers.id)
       const TOPICS = {
         CallStarted:       ethers.id("CallStarted(bytes32,uint256,address,uint256,bytes32,uint32)"),
         ReceiptSubmitted:  ethers.id("ReceiptSubmitted(bytes32,bytes32)"),
