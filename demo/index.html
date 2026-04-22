@@ -3395,8 +3395,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         chainName: "Arc Testnet",
         rpcUrl: "https://rpc.testnet.arc.network",
         explorerBase: "https://testnet.arcscan.app",
-        nativeSymbol: "USDC",
-        // Phase 2 deployment (reputation-enabled):
         registry: "0x74635245CfF23a7F261CD5ECF72693cbc75481e4",
         payPerCall: "0x28aa00Af89483218E6Bc036a72C4bAe8A1514BFE",
         usdc: "0x3600000000000000000000000000000000000000",
@@ -4082,10 +4080,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
           const upd = $("dashLastUpdate");
           if (upd) upd.textContent = `updated ${new Date().toLocaleTimeString("en-US",{hour12:false})}`;
-
-          // Show webhook panel for providers
-          const wp = $("webhookPanel");
-          if (wp) wp.style.display = "";
         } catch(e) {
           console.error("refreshProviderDashboard failed:", e);
         }
@@ -5744,9 +5738,7 @@ console.log("call opened:", tx.hash);`;
         return results;
       }
 
-      // keccak256 topic selectors (pre-computed)
-      const TOPIC_CALL_STARTED       = "0x" + "f5e6c3b0c0b9b7e1e0e4b7c1d0e4a5e3b2f4a1e2d3c4b5a6e7f8091a2b3c4d5e6f7".slice(0, 64);
-      // We'll compute them properly using ethers.id
+      // keccak256 topic selectors — computed via ethers.id
       const TOPICS = {
         CallStarted:       ethers.id("CallStarted(bytes32,uint256,address,uint256,bytes32,uint32)"),
         ReceiptSubmitted:  ethers.id("ReceiptSubmitted(bytes32,bytes32)"),
