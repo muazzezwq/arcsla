@@ -3650,12 +3650,13 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               params: [{ eth_accounts: {} }],
             });
           } catch (permErr) {
-            // 4200 = method not supported, -32601 = method not found
-            if (permErr.code === 4200 || permErr.code === -32601) {
-              await state.provider.send("eth_requestAccounts", []);
-            } else {
-              throw permErr; // user rejected or other real error
+            // 4001 = user explicitly rejected → propagate so the outer catch shows the error
+            if (permErr.code === 4001) {
+              throw permErr;
             }
+            // Any other error (4200 = not supported, -32601 = not found, or unknown)
+            // fall back gracefully to the standard accounts request.
+            await state.provider.send("eth_requestAccounts", []);
           }
           state.signer = await state.provider.getSigner();
           state.address = await state.signer.getAddress();
@@ -3703,7 +3704,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                   chainId: CONFIG.chainIdHex,
                   chainName: CONFIG.chainName,
                   rpcUrls: [CONFIG.rpcUrl],
-                  nativeCurrency: { name: "USDC", symbol: CONFIG.nativeSymbol, decimals: 18 },
+                  nativeCurrency: { name: "USDC", symbol: CONFIG.nativeSymbol, decimals: 6 },
                   blockExplorerUrls: [CONFIG.explorerBase],
                 },
               ],
