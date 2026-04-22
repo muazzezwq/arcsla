@@ -2655,6 +2655,56 @@
         }
       }
 
+
+      /* ---- Personal activity stats ---- */
+      .my-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+      }
+
+      @media (max-width: 1100px) {
+        .my-stats-grid { grid-template-columns: repeat(3, 1fr); }
+      }
+
+      @media (max-width: 600px) {
+        .my-stats-grid { grid-template-columns: repeat(2, 1fr); }
+      }
+
+      .my-stat-card {
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 14px 16px;
+        text-align: center;
+        transition: background 0.15s;
+      }
+
+      .my-stat-card:hover { background: var(--bg-3); }
+
+      .my-stat-val {
+        font-family: var(--font-mono);
+        font-size: 26px;
+        font-weight: 700;
+        line-height: 1.1;
+        color: var(--text);
+        letter-spacing: -0.02em;
+      }
+
+      .my-stat-val.ok     { color: var(--accent); }
+      .my-stat-val.warn   { color: var(--warn); }
+      .my-stat-val.danger { color: var(--danger); }
+
+      .my-stat-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-faint);
+        margin-top: 4px;
+      }
+
       .full-width {
         grid-column: 1 / -1;
       }
@@ -3319,6 +3369,42 @@
           </div>
         </section>
 
+        <!-- Personal activity stats -->
+        <section class="panel full-width" id="myStatsPanel" style="display:none">
+          <div class="panel-head">
+            <h2>Your activity</h2>
+            <span class="mono" style="font-size:11px;color:var(--text-faint)" id="myStatsSub">this session</span>
+          </div>
+          <div class="panel-body" style="padding:16px 20px">
+            <div class="my-stats-grid" id="myStatsGrid">
+              <div class="my-stat-card">
+                <div class="my-stat-val" id="msTotal">0</div>
+                <div class="my-stat-label">total calls</div>
+              </div>
+              <div class="my-stat-card">
+                <div class="my-stat-val ok" id="msCompleted">0</div>
+                <div class="my-stat-label">completed</div>
+              </div>
+              <div class="my-stat-card">
+                <div class="my-stat-val warn" id="msPending">0</div>
+                <div class="my-stat-label">pending</div>
+              </div>
+              <div class="my-stat-card">
+                <div class="my-stat-val danger" id="msSlashed">0</div>
+                <div class="my-stat-label">slashed</div>
+              </div>
+              <div class="my-stat-card">
+                <div class="my-stat-val" id="msSpent">0</div>
+                <div class="my-stat-label">USDC spent</div>
+              </div>
+              <div class="my-stat-card">
+                <div class="my-stat-val ok" id="msRecovered">0</div>
+                <div class="my-stat-label">USDC recovered</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section class="panel full-width">
           <div class="panel-head">
             <h2>Your calls</h2>
@@ -3686,6 +3772,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           await refreshAll();
           await loadMyCalls();
           subscribeToEvents();
+          startCountdownTick(); // start 1-second render loop after data is ready
 
           // Remove any previously registered listeners before adding new ones
           // to prevent duplicate reloads if connect() is called more than once.
@@ -4592,6 +4679,12 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       // -------- Actions: register --------
       async function doRegister() {
+        try {
+          state.signer = await state.provider.getSigner();
+          state.registry = state.registry.connect(state.signer);
+          state.usdc = state.usdc.connect(state.signer);
+        } catch {}
+
         const signerAddr = $("regSigner").value.trim() || state.address;
         const stake = $("regStake").value.trim();
         const price = $("regPrice").value.trim();
@@ -4752,6 +4845,13 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       // -------- Actions: call service --------
       async function doCall() {
+        // Re-fetch signer — some wallets lose connection silently between calls
+        try {
+          state.signer = await state.provider.getSigner();
+          state.payPerCall = state.payPerCall.connect(state.signer);
+          state.usdc = state.usdc.connect(state.signer);
+        } catch {}
+
         const idStr = $("callProviderId").value.trim();
         const payload = $("callPayload").value;
 
@@ -4903,44 +5003,101 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         const origText = btn.textContent;
         btn.textContent = "Processing…";
 
-        try {
-          const responseHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
+        const tSign = toast({
+          kind: "info",
+          title: "Step 1/2 — Signing receipt…",
+          detail: `<span class="spinner"></span> sign the message in MetaMask`,
+          timeout: 0,
+        });
 
-          // Build digest: keccak256(callId, responseHash), then EIP-191 prefix
-          // getBytes() converts hex strings to Uint8Array so concat works correctly
-          const inner = ethers.keccak256(ethers.concat([
+        try {
+          // Refresh signer — some wallets disconnect silently
+          try {
+            state.signer = await state.provider.getSigner();
+            state.payPerCall = state.payPerCall.connect(state.signer);
+          } catch {}
+
+          const responseHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
+          const digest = ethers.keccak256(ethers.concat([
             ethers.getBytes(callId),
             ethers.getBytes(responseHash)
           ]));
-          // Use signMessage on the raw bytes — ethers v6 wraps with \x19 prefix
-          const tSign = toast({
-            kind: "info",
-            title: "Signing receipt…",
-            detail: `<span class="spinner"></span> sign in your wallet`,
-            timeout: 0,
-          });
-          const signature = await state.signer.signMessage(ethers.getBytes(inner));
+
+          // Try EIP-191 personal_sign first
+          let signature;
+          try {
+            signature = await state.signer.signMessage(ethers.getBytes(digest));
+          } catch (signErr) {
+            tSign.remove();
+            if (signErr?.code === 4001 || signErr?.code === "ACTION_REJECTED" || signErr?.message?.includes("rejected")) {
+              toast({ kind: "err", title: "Signing rejected", detail: "You rejected the MetaMask signature." });
+              return;
+            }
+            throw signErr;
+          }
           tSign.remove();
 
           const tSub = toast({
             kind: "info",
-            title: "Submitting receipt…",
-            detail: `<span class="spinner"></span> waiting for signature`,
+            title: "Step 2/2 — Submitting receipt…",
+            detail: `<span class="spinner"></span> confirm transaction in MetaMask`,
             timeout: 0,
           });
-          const tx = await state.payPerCall.submitReceipt(callId, responseHash, signature);
-          await tx.wait();
-          tSub.remove();
+
+          let tx;
+          try {
+            tx = await state.payPerCall.submitReceipt(callId, responseHash, signature);
+          } catch (submitErr) {
+            // If "Invalid signature" revert — retry with eth_sign (no EIP-191 prefix)
+            const msg = submitErr?.message || "";
+            const isInvalidSig = msg.includes("0x8baa579f") === false && (
+              msg.includes("Invalid signature") || msg.includes("0x09bde339") || msg.includes("ECDSA")
+            );
+            if (isInvalidSig) {
+              tSub.remove();
+              const tRetry = toast({
+                kind: "info",
+                title: "Retrying with raw signature…",
+                detail: `<span class="spinner"></span> sign again in MetaMask`,
+                timeout: 0,
+              });
+              try {
+                const rawSig = await state.provider.send("eth_sign", [state.address, digest]);
+                tRetry.remove();
+                const tSub2 = toast({ kind: "info", title: "Submitting receipt…", detail: `<span class="spinner"></span> confirming`, timeout: 0 });
+                tx = await state.payPerCall.submitReceipt(callId, responseHash, rawSig);
+                await tx.wait();
+                tSub2.remove();
+              } catch (retryErr) {
+                tRetry.remove();
+                throw retryErr;
+              }
+            } else {
+              tSub.remove();
+              throw submitErr;
+            }
+          }
+
+          if (tx) {
+            try { await tx.wait(); } catch {}
+            tSub?.remove?.();
+          }
+
           toast({
             kind: "ok",
-            title: "Receipt submitted",
+            title: "✅ Receipt submitted",
             link: txLink(tx.hash),
-            detail: "escrow released to provider",
+            detail: "Payment released to provider wallet",
           });
           await refreshAll();
         } catch (e) {
+          tSign?.remove?.();
           console.error(e);
-          toast({ kind: "err", title: "Receipt failed", detail: friendlyError(e) });
+          if (e?.code === 4001 || e?.code === "ACTION_REJECTED" || e?.message?.includes("rejected")) {
+            toast({ kind: "err", title: "Transaction rejected", detail: "You rejected the MetaMask prompt." });
+          } else {
+            toast({ kind: "err", title: "Receipt failed", detail: friendlyError(e) });
+          }
         } finally {
           btn.disabled = false;
           btn.textContent = origText;
@@ -4961,25 +5118,47 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         const origText = btn.textContent;
         btn.textContent = "Processing…";
 
+        const t = toast({
+          kind: "info",
+          title: "Claiming timeout…",
+          detail: `<span class="spinner"></span> confirm in MetaMask`,
+          timeout: 0,
+        });
+
         try {
-          const t = toast({
+          // Re-fetch signer fresh — some wallets lose connection silently
+          try {
+            state.signer = await state.provider.getSigner();
+            state.payPerCall = state.payPerCall.connect(state.signer);
+          } catch (signerErr) {
+            console.warn("signer refresh failed, using existing:", signerErr.message);
+          }
+
+          const tx = await state.payPerCall.claimTimeout(callId);
+          t.remove();
+          const tWait = toast({
             kind: "info",
-            title: "Claiming timeout…",
-            detail: `<span class="spinner"></span> waiting for signature`,
+            title: "Transaction sent…",
+            detail: `<span class="spinner"></span> waiting for confirmation`,
             timeout: 0,
           });
-          const tx = await state.payPerCall.claimTimeout(callId);
           await tx.wait();
-          t.remove();
+          tWait.remove();
           toast({
             kind: "ok",
-            title: "Timeout claimed — provider slashed",
+            title: "✅ Timeout claimed — provider slashed",
             link: txLink(tx.hash),
           });
           await refreshAll();
         } catch (e) {
+          t.remove();
           console.error(e);
-          toast({ kind: "err", title: "Timeout failed", detail: friendlyError(e) });
+          // User rejected
+          if (e?.code === 4001 || e?.code === "ACTION_REJECTED" || e?.message?.includes("rejected")) {
+            toast({ kind: "err", title: "Transaction rejected", detail: "You rejected the MetaMask prompt." });
+          } else {
+            toast({ kind: "err", title: "Timeout failed", detail: friendlyError(e) });
+          }
         } finally {
           btn.disabled = false;
           btn.textContent = origText;
@@ -5120,6 +5299,39 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         $("feed").prepend(row);
       }
 
+
+      function renderMyStats() {
+        const calls = Array.from(state.myCalls.values());
+        if (calls.length === 0) return;
+
+        const panel = $("myStatsPanel");
+        if (panel) panel.style.display = "";
+
+        const total     = calls.length;
+        const completed = calls.filter(c => Number(c.status) === 2).length;
+        const pending   = calls.filter(c => Number(c.status) === 1).length;
+        const slashed   = calls.filter(c => Number(c.status) === 3).length;
+
+        const d = state.usdcDecimals;
+        const spent = calls.reduce((acc, c) => acc + (c.amount ?? 0n), 0n);
+
+        // Recovered = refunds from slashed calls (amount back) + slash bonus
+        // We approximate: for each slashed call, caller got amount back
+        const slashedCalls = calls.filter(c => Number(c.status) === 3);
+        const recovered = slashedCalls.reduce((acc, c) => acc + (c.amount ?? 0n), 0n);
+
+        $("msTotal").textContent     = total;
+        $("msCompleted").textContent = completed;
+        $("msPending").textContent   = pending;
+        $("msSlashed").textContent   = slashed;
+        $("msSpent").textContent     = parseFloat(ethers.formatUnits(spent, d)).toFixed(2);
+        $("msRecovered").textContent = parseFloat(ethers.formatUnits(recovered, d)).toFixed(2);
+
+        const honorRate = total > 0 ? ((completed / total) * 100).toFixed(0) : "—";
+        const sub = $("myStatsSub");
+        if (sub) sub.textContent = `${total} call${total === 1 ? "" : "s"} · ${honorRate}% fulfilled`;
+      }
+
       // Track which calls have already triggered deadline warnings to avoid repeat toasts
       const _warnedAt30 = new Set();
       const _warnedAt10 = new Set();
@@ -5220,6 +5432,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           .join("");
 
         $("callsSummary").textContent = `${calls.length} total · ${calls.filter((c) => c.status === 1).length} pending`;
+        renderMyStats();
 
         // Hook up action buttons
         $("callsBox")
@@ -5245,9 +5458,18 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       // Update call countdowns every second
-      setInterval(() => {
-        if (state.myCalls.size > 0) renderCalls();
-      }, 1000);
+      // Guard: only run after connect() populates myCalls, and only when
+      // there are pending calls (status=1) so we don't redraw needlessly.
+      let _countdownStarted = false;
+      function startCountdownTick() {
+        if (_countdownStarted) return;
+        _countdownStarted = true;
+        setInterval(() => {
+          if (!state.address) return;
+          const hasPending = Array.from(state.myCalls.values()).some(c => Number(c.status) === 1);
+          if (hasPending) renderCalls();
+        }, 1000);
+      }
 
       // Auto-refresh leaderboard + network stats every 30 seconds
       setInterval(() => {
