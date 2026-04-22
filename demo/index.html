@@ -3628,6 +3628,10 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         }
       }
 
+      // -------- Wallet event handlers (module-scoped so removeListener works) --------
+      const _onAccountsChanged = () => location.reload();
+      const _onChainChanged    = () => location.reload();
+
       // -------- Connection --------
       async function connect() {
         if (!window.ethereum) {
@@ -3651,10 +3655,16 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             });
           } catch (permErr) {
             // 4200 = method not supported, -32601 = method not found
+            // 4001 / ACTION_REJECTED = user explicitly rejected the popup
+            if (permErr.code === 4001 || permErr.code === "ACTION_REJECTED") {
+              toast({ kind: "err", title: "Wallet rejected", detail: "You rejected the connection request." });
+              return;
+            }
+            // 4200 = method not supported, -32601 = method not found → fallback
             if (permErr.code === 4200 || permErr.code === -32601) {
               await state.provider.send("eth_requestAccounts", []);
             } else {
-              throw permErr; // user rejected or other real error
+              throw permErr; // other real error — let the outer catch handle it
             }
           }
           state.signer = await state.provider.getSigner();
@@ -3677,11 +3687,15 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           await loadMyCalls();
           subscribeToEvents();
 
-          window.ethereum.on?.("accountsChanged", () => location.reload());
-          window.ethereum.on?.("chainChanged", () => location.reload());
+          // Remove any previously registered listeners before adding new ones
+          // to prevent duplicate reloads if connect() is called more than once.
+          window.ethereum.removeListener?.("accountsChanged", _onAccountsChanged);
+          window.ethereum.removeListener?.("chainChanged",    _onChainChanged);
+          window.ethereum.on?.("accountsChanged", _onAccountsChanged);
+          window.ethereum.on?.("chainChanged",    _onChainChanged);
         } catch (e) {
           console.error(e);
-          toast({ kind: "err", title: "Connect failed", detail: e.message });
+          toast({ kind: "err", title: "Connect failed", detail: friendlyError(e) });
         }
       }
 
@@ -3703,7 +3717,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                   chainId: CONFIG.chainIdHex,
                   chainName: CONFIG.chainName,
                   rpcUrls: [CONFIG.rpcUrl],
-                  nativeCurrency: { name: "USDC", symbol: CONFIG.nativeSymbol, decimals: 18 },
+                  nativeCurrency: { name: "Arc ETH", symbol: "ETH", decimals: 18 },
                   blockExplorerUrls: [CONFIG.explorerBase],
                 },
               ],
@@ -3712,6 +3726,8 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             throw e;
           }
         }
+        // Always refresh provider & signer after any chain switch/add — some wallets
+        // do NOT fire chainChanged reliably, so location.reload() may not trigger.
         state.provider = new ethers.BrowserProvider(window.ethereum);
         state.signer = await state.provider.getSigner();
         state.address = await state.signer.getAddress();
@@ -4760,7 +4776,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           }
           const price = p.pricePerCall;
 
-          // Approve if needed
+          // Approve if needed — approve only the exact price, not unlimited
           const currentAllowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
           if (currentAllowance < price) {
             const tA = toast({
@@ -4769,7 +4785,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               detail: `<span class="spinner"></span> waiting for signature`,
               timeout: 0,
             });
-            const txA = await state.usdc.approve(CONFIG.payPerCall, ethers.MaxUint256);
+            const txA = await state.usdc.approve(CONFIG.payPerCall, price);
             await txA.wait();
             tA.remove();
             toast({ kind: "ok", title: "USDC approved", link: txLink(txA.hash) });
@@ -5378,7 +5394,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             if (allowance < totalNeeded) {
               btn.textContent = "Approve USDC (1/1)…";
               toast({ kind: "info", title: "Approving USDC for all calls…", detail: "<span class='spinner'></span> one approval for all providers", timeout: 0 });
-              const txA = await state.usdc.approve(CONFIG.payPerCall, ethers.MaxUint256);
+              const txA = await state.usdc.approve(CONFIG.payPerCall, totalNeeded);
               await txA.wait();
               // Remove approval toast
               document.querySelectorAll(".toast.info").forEach(t => t.remove());
