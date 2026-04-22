@@ -2655,56 +2655,6 @@
         }
       }
 
-
-      /* ---- Personal activity stats ---- */
-      .my-stats-grid {
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 12px;
-      }
-
-      @media (max-width: 1100px) {
-        .my-stats-grid { grid-template-columns: repeat(3, 1fr); }
-      }
-
-      @media (max-width: 600px) {
-        .my-stats-grid { grid-template-columns: repeat(2, 1fr); }
-      }
-
-      .my-stat-card {
-        background: var(--bg-2);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 14px 16px;
-        text-align: center;
-        transition: background 0.15s;
-      }
-
-      .my-stat-card:hover { background: var(--bg-3); }
-
-      .my-stat-val {
-        font-family: var(--font-mono);
-        font-size: 26px;
-        font-weight: 700;
-        line-height: 1.1;
-        color: var(--text);
-        letter-spacing: -0.02em;
-      }
-
-      .my-stat-val.ok     { color: var(--accent); }
-      .my-stat-val.warn   { color: var(--warn); }
-      .my-stat-val.danger { color: var(--danger); }
-
-      .my-stat-label {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        font-weight: 600;
-        letter-spacing: 0.06em;
-        text-transform: uppercase;
-        color: var(--text-faint);
-        margin-top: 4px;
-      }
-
       .full-width {
         grid-column: 1 / -1;
       }
@@ -3218,7 +3168,7 @@
                   <input type="text" id="updatePriceVal" placeholder="e.g. 0.5" />
                   <div class="hint" id="updatePriceHint">Current price: loading…</div>
                 </div>
-                <button class="btn btn-primary" id="btnUpdatePrice">Save price intent (local only)</button>
+                <button class="btn btn-primary" id="btnUpdatePrice">Update price</button>
               </div>
             </details>
 
@@ -3364,42 +3314,6 @@
               </div>
               <div class="budget-bar-wrap">
                 <div class="budget-bar-track"><div class="budget-bar-fill" id="budgetBarFill" style="width:0%"></div></div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- Personal activity stats -->
-        <section class="panel full-width" id="myStatsPanel" style="display:none">
-          <div class="panel-head">
-            <h2>Your activity</h2>
-            <span class="mono" style="font-size:11px;color:var(--text-faint)" id="myStatsSub">this session</span>
-          </div>
-          <div class="panel-body" style="padding:16px 20px">
-            <div class="my-stats-grid" id="myStatsGrid">
-              <div class="my-stat-card">
-                <div class="my-stat-val" id="msTotal">0</div>
-                <div class="my-stat-label">total calls</div>
-              </div>
-              <div class="my-stat-card">
-                <div class="my-stat-val ok" id="msCompleted">0</div>
-                <div class="my-stat-label">completed</div>
-              </div>
-              <div class="my-stat-card">
-                <div class="my-stat-val warn" id="msPending">0</div>
-                <div class="my-stat-label">pending</div>
-              </div>
-              <div class="my-stat-card">
-                <div class="my-stat-val danger" id="msSlashed">0</div>
-                <div class="my-stat-label">slashed</div>
-              </div>
-              <div class="my-stat-card">
-                <div class="my-stat-val" id="msSpent">0</div>
-                <div class="my-stat-label">USDC spent</div>
-              </div>
-              <div class="my-stat-card">
-                <div class="my-stat-val ok" id="msRecovered">0</div>
-                <div class="my-stat-label">USDC recovered</div>
               </div>
             </div>
           </div>
@@ -3622,16 +3536,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         actionsInitialized: false, // smart-open action tracking
       };
 
-      // -------- Debounced refreshAll (avoids cascading RPC calls) --------
-      let _refreshDebounceTimer = null;
-      function debouncedRefresh(delay = 1500) {
-        if (_refreshDebounceTimer) clearTimeout(_refreshDebounceTimer);
-        _refreshDebounceTimer = setTimeout(() => {
-          _refreshDebounceTimer = null;
-          refreshAll().catch(console.error);
-        }, delay);
-      }
-
       // -------- Tab title counter (unseen events) --------
       const titleBase = "ArcSLA · Arc Testnet";
       let unseenCount = 0;
@@ -3724,10 +3628,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         }
       }
 
-      // -------- Wallet event handlers (module-scoped so removeListener works) --------
-      const _onAccountsChanged = () => location.reload();
-      const _onChainChanged    = () => location.reload();
-
       // -------- Connection --------
       async function connect() {
         if (!window.ethereum) {
@@ -3738,13 +3638,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           });
           return;
         }
-
-        // Visual feedback while connecting
-        const btnC = $("connectBtn");
-        const btnC2 = $("connectBtn2");
-        const origC = btnC?.textContent;
-        if (btnC) { btnC.disabled = true; btnC.textContent = "Connecting…"; }
-        if (btnC2) { btnC2.disabled = true; btnC2.textContent = "Connecting…"; }
 
         try {
           state.provider = new ethers.BrowserProvider(window.ethereum);
@@ -3758,16 +3651,10 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             });
           } catch (permErr) {
             // 4200 = method not supported, -32601 = method not found
-            // 4001 / ACTION_REJECTED = user explicitly rejected the popup
-            if (permErr.code === 4001 || permErr.code === "ACTION_REJECTED") {
-              toast({ kind: "err", title: "Wallet rejected", detail: "You rejected the connection request." });
-              return;
-            }
-            // 4200 = method not supported, -32601 = method not found → fallback
             if (permErr.code === 4200 || permErr.code === -32601) {
               await state.provider.send("eth_requestAccounts", []);
             } else {
-              throw permErr; // other real error — let the outer catch handle it
+              throw permErr; // user rejected or other real error
             }
           }
           state.signer = await state.provider.getSigner();
@@ -3789,22 +3676,12 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           await refreshAll();
           await loadMyCalls();
           subscribeToEvents();
-          startCountdownTick(); // start 1-second render loop after data is ready
 
-          // Remove any previously registered listeners before adding new ones
-          // to prevent duplicate reloads if connect() is called more than once.
-          window.ethereum.removeListener?.("accountsChanged", _onAccountsChanged);
-          window.ethereum.removeListener?.("chainChanged",    _onChainChanged);
-          window.ethereum.on?.("accountsChanged", _onAccountsChanged);
-          window.ethereum.on?.("chainChanged",    _onChainChanged);
+          window.ethereum.on?.("accountsChanged", () => location.reload());
+          window.ethereum.on?.("chainChanged", () => location.reload());
         } catch (e) {
           console.error(e);
-          toast({ kind: "err", title: "Connect failed", detail: friendlyError(e) });
-        } finally {
-          const btnC_ = $("connectBtn");
-          const btnC2_ = $("connectBtn2");
-          if (btnC_) { btnC_.disabled = false; btnC_.textContent = origC || "Connect wallet"; }
-          if (btnC2_) { btnC2_.disabled = false; btnC2_.textContent = "Connect wallet"; }
+          toast({ kind: "err", title: "Connect failed", detail: e.message });
         }
       }
 
@@ -3819,35 +3696,22 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           });
         } catch (e) {
           if (e.code === 4902) {
-            // Network not added yet — prompt to add it
-            try {
-              await window.ethereum.request({
-                method: "wallet_addEthereumChain",
-                params: [
-                  {
-                    chainId: CONFIG.chainIdHex,
-                    chainName: CONFIG.chainName,
-                    rpcUrls: [CONFIG.rpcUrl],
-                    nativeCurrency: { name: "Arc ETH", symbol: "ETH", decimals: 18 },
-                    blockExplorerUrls: [CONFIG.explorerBase],
-                  },
-                ],
-              });
-            } catch (addErr) {
-              // User rejected adding the network
-              if (addErr.code === 4001 || addErr.code === "ACTION_REJECTED") {
-                throw new Error("Please add Arc Testnet to MetaMask to continue. You can also add it manually from faucet.circle.com.");
-              }
-              throw addErr;
-            }
-          } else if (e.code === 4001 || e.code === "ACTION_REJECTED") {
-            throw new Error("Please switch to Arc Testnet in MetaMask to use ArcSLA.");
+            await window.ethereum.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: CONFIG.chainIdHex,
+                  chainName: CONFIG.chainName,
+                  rpcUrls: [CONFIG.rpcUrl],
+                  nativeCurrency: { name: "USDC", symbol: CONFIG.nativeSymbol, decimals: 18 },
+                  blockExplorerUrls: [CONFIG.explorerBase],
+                },
+              ],
+            });
           } else {
             throw e;
           }
         }
-        // Always refresh provider & signer after any chain switch/add — some wallets
-        // do NOT fire chainChanged reliably, so location.reload() may not trigger.
         state.provider = new ethers.BrowserProvider(window.ethereum);
         state.signer = await state.provider.getSigner();
         state.address = await state.signer.getAddress();
@@ -3863,8 +3727,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         $("netLabel").textContent = CONFIG.chainName;
         $("netDot").classList.add("ok");
         startLiveClock();
-        updateBudgetDisplay();
-        updateWebhookBadge();
       }
 
       // Ticking clock — updates every second while connected
@@ -3909,11 +3771,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       // -------- Refresh data --------
-      let _refreshInProgress = false;
       async function refreshAll() {
-        if (_refreshInProgress) return; // prevent concurrent refreshes
-        _refreshInProgress = true;
-        try {
         // First wave: everything independent can run in parallel
         await Promise.all([
           refreshBalance(),
@@ -3927,9 +3785,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         await refreshLeaderboard();
         // Third wave: provider dashboard (needs providerInfo)
         await refreshProviderDashboard();
-        } finally {
-          _refreshInProgress = false;
-        }
       }
 
       // Load existing calls for the connected wallet from on-chain event logs.
@@ -3939,29 +3794,15 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         try {
           const myFilter = state.payPerCall.filters.CallStarted(null, null, state.address);
           const startedLogs = await safeQuery(state.payPerCall, "CallStarted", myFilter);
+          const receiptLogs = await safeQuery(state.payPerCall, "ReceiptSubmitted");
+          const slashedLogs = await safeQuery(state.payPerCall, "CallSlashed");
 
-          // Build set of callIds belonging to this wallet first — 
-          // then use it to filter receipts/slashes instead of fetching everything
-          const myCallIds = new Set(startedLogs.map(l => l.args.callId));
+          const receiptSet = new Set(receiptLogs.map((l) => l.args.callId));
+          const slashedSet = new Set(slashedLogs.map((l) => l.args.callId));
 
-          const [receiptLogs, slashedLogs] = await Promise.all([
-            safeQuery(state.payPerCall, "ReceiptSubmitted"),
-            safeQuery(state.payPerCall, "CallSlashed"),
-          ]);
-
-          // Only track receipts/slashes for MY calls
-          const receiptSet = new Set(receiptLogs.filter(l => myCallIds.has(l.args.callId)).map(l => l.args.callId));
-          const slashedSet = new Set(slashedLogs.filter(l => myCallIds.has(l.args.callId)).map(l => l.args.callId));
-
-          // Fetch all on-chain call details in parallel (not one-by-one)
-          const newLogs = startedLogs.filter(l => !state.myCalls.has(l.args.callId));
-          const onChainDetails = await Promise.all(
-            newLogs.map(l => state.payPerCall.getCall(l.args.callId).catch(() => null))
-          );
-
-          for (let i = 0; i < newLogs.length; i++) {
-            const l = newLogs[i];
+          for (const l of startedLogs) {
             const callId = l.args.callId;
+            if (state.myCalls.has(callId)) continue;
             const deadlineNum = Number(l.args.deadline);
             let status = 1;
             if (receiptSet.has(callId)) status = 2;
@@ -3969,44 +3810,30 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
             let startedAt = deadlineNum - 60;
             let totalSec = 60;
-            const onChain = onChainDetails[i];
-            if (onChain) {
+            try {
+              const onChain = await state.payPerCall.getCall(callId);
               startedAt = Number(onChain.startedAt);
               totalSec = deadlineNum - startedAt;
-            }
+            } catch {}
 
             state.myCalls.set(callId, {
               callId,
-              providerId: Number(l.args.providerId),
+              providerId: l.args.providerId,
               caller: l.args.caller,
               amount: l.args.amount,
               deadline: deadlineNum,
               startedAt,
               totalSec,
-              status: Number(status),
+              status,
             });
-          }
-
-          // Also update status on ALREADY-TRACKED calls that may have changed
-          // (e.g. page reloaded after a receipt was submitted)
-          for (const l of startedLogs) {
-            const callId = l.args.callId;
-            const existing = state.myCalls.get(callId);
-            if (!existing) continue; // was just added above
-            const newStatus = receiptSet.has(callId) ? 2 : slashedSet.has(callId) ? 3 : 1;
-            if (existing.status !== newStatus) {
-              existing.status = newStatus;
-            }
           }
 
           if (state.myCalls.size > 0) {
             renderCalls();
-            renderMyStats();
             const pending = Array.from(state.myCalls.values()).filter(c => c.status === 1);
             if (pending.length > 0) {
               const latest = pending[pending.length - 1];
               $("rcpCallId").value = latest.callId;
-              $("rcpCallId").dispatchEvent(new Event("input"));
               $("toCallId").value = latest.callId;
             }
           }
@@ -4210,36 +4037,17 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           });
       }
 
-      // -------- Shared log cache (avoids duplicate safeQuery across functions) --------
-      const _logCache = { ts: 0, started: null, receipts: null, slashed: null };
-      const LOG_CACHE_TTL = 25_000; // ms — refresh every 25s max
-
-      async function getCachedLogs() {
-        const now = Date.now();
-        if (_logCache.started && (now - _logCache.ts) < LOG_CACHE_TTL) {
-          return { started: _logCache.started, receipts: _logCache.receipts, slashed: _logCache.slashed };
-        }
-        const [started, receipts, slashed] = await Promise.all([
-          safeQuery(state.payPerCall, "CallStarted"),
-          safeQuery(state.payPerCall, "ReceiptSubmitted"),
-          safeQuery(state.payPerCall, "CallSlashed"),
-        ]);
-        _logCache.started  = started;
-        _logCache.receipts = receipts;
-        _logCache.slashed  = slashed;
-        _logCache.ts       = now;
-        return { started, receipts, slashed };
-      }
-
-      // Invalidate cache when a new on-chain event occurs
-      function invalidateLogCache() { _logCache.ts = 0; }
-
       // -------- Network stats (on-chain aggregate) --------
       async function refreshNetworkStats() {
         try {
-          const [nextId, { started: startedLogs, receipts: receiptLogs, slashed: slashedLogs }] = await Promise.all([
+          // Providers count comes directly from contract state (survives chain age).
+          // Calls/receipts/slashes still use event scan since the contract doesn't
+          // expose counters for those (would cost storage gas per tx).
+          const [nextId, startedLogs, receiptLogs, slashedLogs] = await Promise.all([
             state.registry.nextProviderId().catch(() => 1n),
-            getCachedLogs(),
+            safeQuery(state.payPerCall, "CallStarted"),
+            safeQuery(state.payPerCall, "ReceiptSubmitted"),
+            safeQuery(state.payPerCall, "CallSlashed"),
           ]);
 
           const providersCount = Math.max(0, Number(nextId) - 1);
@@ -4369,6 +4177,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               const selfClass = isSelf ? " is-self" : "";
               const medal = rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : rank;
               const fillClass = rep >= 80 ? "" : rep >= 50 ? "warn" : "crit";
+              const callsTotal = (state.networkStats?.receipts ?? 0);
               return `
                 <div class="lb-row${topClass}${selfClass}" data-pid="${p.id}">
                   <div class="lb-rank">${medal}</div>
@@ -4400,8 +4209,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       // -------- Activity chart (hourly buckets, last 24h) --------
       async function refreshActivityChart() {
         try {
-          // Reuse cached logs — avoids duplicate RPC calls
-          const { started: startedLogs, slashed: slashedLogs } = await getCachedLogs();
+          // Reuse event log queries we already have from refreshNetworkStats
+          const [startedLogs, slashedLogs] = await Promise.all([
+            safeQuery(state.payPerCall, "CallStarted"),
+            safeQuery(state.payPerCall, "CallSlashed"),
+          ]);
 
           // Get current block and estimate timestamps backwards.
           // Arc testnet has ~2s block time; last 24h ~= 43200 blocks.
@@ -4523,15 +4335,17 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             state.registry.slashedCalls(providerId),
           ]);
 
-          // Fetch calls for this specific provider + use cached global logs
-          const [startedLogs, { receipts: allReceiptLogs, slashed: allSlashedLogs }] = await Promise.all([
-            safeQuery(state.payPerCall, "CallStarted", state.payPerCall.filters.CallStarted(null, providerId)),
-            getCachedLogs(),
-          ]);
-          // Build call ID set for this provider only — filter receipts/slashes to match
-          const providerCallIds = new Set(startedLogs.map(l => l.args.callId));
-          const receiptSet = new Set(allReceiptLogs.filter(l => providerCallIds.has(l.args.callId)).map(l => l.args.callId));
-          const slashedSet = new Set(allSlashedLogs.filter(l => providerCallIds.has(l.args.callId)).map(l => l.args.callId));
+          // Fetch all calls for this provider by filtering CallStarted events
+          const startedLogs = await safeQuery(
+            state.payPerCall,
+            "CallStarted",
+            state.payPerCall.filters.CallStarted(null, providerId),
+          );
+          const receiptLogs = await safeQuery(state.payPerCall, "ReceiptSubmitted");
+          const slashedLogs = await safeQuery(state.payPerCall, "CallSlashed");
+
+          const receiptSet = new Set(receiptLogs.map((l) => l.args.callId));
+          const slashedSet = new Set(slashedLogs.map((l) => l.args.callId));
 
           const calls = startedLogs.map((l) => {
             const cid = l.args.callId;
@@ -4662,33 +4476,19 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           `;
 
           // Compute average response time from CallStarted vs ReceiptSubmitted events
-          // Uses cached receipt logs — no additional RPC call needed
           (async () => {
             try {
               const startMap = new Map();
               for (const l of startedLogs) {
                 startMap.set(l.args.callId, l.blockNumber);
               }
-              // Use cached logs; filter to only this provider's calls
-              const { receipts: receiptFull } = await getCachedLogs();
-              // Measure real block time from 2 anchor blocks instead of hardcoded 2s
-              let blockTimeSec = 2;
-              try {
-                const rpcProv = state.payPerCall.runner.provider;
-                const latest = await rpcProv.getBlockNumber();
-                const [blkOld, blkNew] = await Promise.all([
-                  rpcProv.getBlock(Math.max(1, latest - 500)),
-                  rpcProv.getBlock(latest),
-                ]);
-                if (blkOld && blkNew && blkNew.number > blkOld.number) {
-                  blockTimeSec = (blkNew.timestamp - blkOld.timestamp) / (blkNew.number - blkOld.number);
-                }
-              } catch {}
+              const receiptFull = await safeQuery(state.payPerCall, "ReceiptSubmitted");
+              const BLOCK_TIME = 2; // Arc ~2s
               const diffs = [];
               for (const r of receiptFull) {
                 const startBlock = startMap.get(r.args.callId);
                 if (startBlock != null) {
-                  diffs.push(Math.round((r.blockNumber - startBlock) * blockTimeSec));
+                  diffs.push((r.blockNumber - startBlock) * BLOCK_TIME);
                 }
               }
               const avgEl = document.getElementById("modalAvgResp");
@@ -4776,12 +4576,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       // -------- Actions: register --------
       async function doRegister() {
-        try {
-          state.signer = await state.provider.getSigner();
-          state.registry = state.registry.connect(state.signer);
-          state.usdc = state.usdc.connect(state.signer);
-        } catch {}
-
         const signerAddr = $("regSigner").value.trim() || state.address;
         const stake = $("regStake").value.trim();
         const price = $("regPrice").value.trim();
@@ -4843,7 +4637,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         const origText = btn.textContent;
         btn.textContent = "Processing…";
 
-        try {
+                try {
           const stakeWei = ethers.parseUnits(stake, state.usdcDecimals);
           const priceWei = ethers.parseUnits(price, state.usdcDecimals);
           const slashBps = Math.round(slashPct * 100);
@@ -4856,11 +4650,8 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             timeout: 0,
           });
           const txA = await state.usdc.approve(CONFIG.registry, stakeWei);
-          // Safe: only update if selectors exist (toast structure may vary)
-          const _tATitle = tApprove.querySelector(".title");
-          const _tADetail = tApprove.querySelector(".detail");
-          if (_tATitle) _tATitle.textContent = "Approval sent";
-          if (_tADetail) _tADetail.innerHTML = `tx ${short(txA.hash, 6)}`;
+          tApprove.querySelector(".title").textContent = "Approval sent";
+          tApprove.querySelector(".detail").innerHTML = `tx ${short(txA.hash, 6)}`;
           await txA.wait();
           tApprove.remove();
           toast({
@@ -4945,13 +4736,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       // -------- Actions: call service --------
       async function doCall() {
-        // Re-fetch signer — some wallets lose connection silently between calls
-        try {
-          state.signer = await state.provider.getSigner();
-          state.payPerCall = state.payPerCall.connect(state.signer);
-          state.usdc = state.usdc.connect(state.signer);
-        } catch {}
-
         const idStr = $("callProviderId").value.trim();
         const payload = $("callPayload").value;
 
@@ -4970,21 +4754,13 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         try {
           // Fetch SLA terms to know the price
           const p = await state.registry.getProvider(providerId);
-          if (p.owner === ethers.ZeroAddress) {
-            toast({ kind: "err", title: "Provider not found", detail: `No provider with ID ${idStr} exists.` });
-            return;
-          }
           if (!p.active) {
-            toast({ kind: "err", title: "Provider is inactive", detail: "This provider has deregistered or paused. Choose another provider." });
+            toast({ kind: "err", title: "Provider is inactive" });
             return;
           }
           const price = p.pricePerCall;
 
-          // Check session budget before proceeding
-          const priceFloat = parseFloat(ethers.formatUnits(price, state.usdcDecimals));
-          if (!checkBudget(priceFloat)) return; // finally block re-enables btn
-
-          // Approve if needed — approve only the exact price, not unlimited
+          // Approve if needed
           const currentAllowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
           if (currentAllowance < price) {
             const tA = toast({
@@ -4993,7 +4769,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               detail: `<span class="spinner"></span> waiting for signature`,
               timeout: 0,
             });
-            const txA = await state.usdc.approve(CONFIG.payPerCall, price);
+            const txA = await state.usdc.approve(CONFIG.payPerCall, ethers.MaxUint256);
             await txA.wait();
             tA.remove();
             toast({ kind: "ok", title: "USDC approved", link: txLink(txA.hash) });
@@ -5033,20 +4809,18 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             });
             // Auto-fill receipt/timeout fields for convenience
             $("rcpCallId").value = callId;
-            $("rcpCallId").dispatchEvent(new Event("input"));
             $("toCallId").value = callId;
-            // Record spend (use priceFloat already fetched above — no extra RPC)
-            recordSpend(priceFloat);
-            sendWebhookNotification(`New call opened → provider #${providerId} · call ${short(callId, 8)}`).catch(() => {});
+            // Record spend + webhook
+            try {
+              const priceNum = parseFloat(ethers.formatUnits((await state.registry.getProvider(providerId)).pricePerCall, state.usdcDecimals));
+              recordSpend(priceNum);
+              sendWebhookNotification(`New call opened → provider #${providerId} · call ${short(callId, 8)}`);
+            } catch {}
           }
           await refreshAll();
         } catch (e) {
           console.error(e);
-          if (e?.code === 4001 || e?.code === "ACTION_REJECTED" || e?.message?.includes("rejected")) {
-            toast({ kind: "err", title: "Transaction rejected", detail: "You cancelled the MetaMask prompt." });
-          } else {
-            toast({ kind: "err", title: "Call failed", detail: friendlyError(e) });
-          }
+          toast({ kind: "err", title: "Call failed", detail: friendlyError(e) });
         } finally {
           btn.disabled = false;
           btn.textContent = origText;
@@ -5094,17 +4868,17 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             });
             return;
           }
-          if (secsRemaining <= 8) {
+          if (secsRemaining <= 20) {
             toast({
               kind: "err",
-              title: `🚨 Only ${secsRemaining}s left — deadline too close`,
-              detail: "Not enough time to sign and confirm before the deadline.",
+              title: `🚨 Only ${secsRemaining}s left — too risky`,
+              detail: "MetaMask needs ~10s to confirm. There is not enough time to safely submit this receipt.",
               timeout: 8000,
             });
             return;
           }
-          if (secsRemaining <= 30) {
-            const go = window.confirm(`⚠️ Only ${secsRemaining}s left on the SLA deadline.\n\nArc Testnet confirms in ~2s but MetaMask signing takes a few seconds. Proceed immediately if you continue.\n\nContinue?`);
+          if (secsRemaining <= 45) {
+            const go = window.confirm(`⚠️ Only ${secsRemaining}s left on the SLA deadline.\n\nMetaMask needs ~10s to sign + confirm. This is tight — proceed only if you are quick.\n\nContinue?`);
             if (!go) return;
           }
         }
@@ -5113,101 +4887,44 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         const origText = btn.textContent;
         btn.textContent = "Processing…";
 
-        const tSign = toast({
-          kind: "info",
-          title: "Step 1/2 — Signing receipt…",
-          detail: `<span class="spinner"></span> sign the message in MetaMask`,
-          timeout: 0,
-        });
-
         try {
-          // Refresh signer — some wallets disconnect silently
-          try {
-            state.signer = await state.provider.getSigner();
-            state.payPerCall = state.payPerCall.connect(state.signer);
-          } catch {}
-
           const responseHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
-          const digest = ethers.keccak256(ethers.concat([
+
+          // Build digest: keccak256(callId, responseHash), then EIP-191 prefix
+          // getBytes() converts hex strings to Uint8Array so concat works correctly
+          const inner = ethers.keccak256(ethers.concat([
             ethers.getBytes(callId),
             ethers.getBytes(responseHash)
           ]));
-
-          // Try EIP-191 personal_sign first
-          let signature;
-          try {
-            signature = await state.signer.signMessage(ethers.getBytes(digest));
-          } catch (signErr) {
-            tSign.remove();
-            if (signErr?.code === 4001 || signErr?.code === "ACTION_REJECTED" || signErr?.message?.includes("rejected")) {
-              toast({ kind: "err", title: "Signing rejected", detail: "You rejected the MetaMask signature." });
-              return;
-            }
-            throw signErr;
-          }
+          // Use signMessage on the raw bytes — ethers v6 wraps with \x19 prefix
+          const tSign = toast({
+            kind: "info",
+            title: "Signing receipt…",
+            detail: `<span class="spinner"></span> sign in your wallet`,
+            timeout: 0,
+          });
+          const signature = await state.signer.signMessage(ethers.getBytes(inner));
           tSign.remove();
 
           const tSub = toast({
             kind: "info",
-            title: "Step 2/2 — Submitting receipt…",
-            detail: `<span class="spinner"></span> confirm transaction in MetaMask`,
+            title: "Submitting receipt…",
+            detail: `<span class="spinner"></span> waiting for signature`,
             timeout: 0,
           });
-
-          let tx;
-          try {
-            tx = await state.payPerCall.submitReceipt(callId, responseHash, signature);
-          } catch (submitErr) {
-            // If "Invalid signature" revert — retry with eth_sign (no EIP-191 prefix)
-            const msg = submitErr?.message || "";
-            const isInvalidSig = msg.includes("0x8baa579f") === false && (
-              msg.includes("Invalid signature") || msg.includes("0x09bde339") || msg.includes("ECDSA")
-            );
-            if (isInvalidSig) {
-              tSub.remove();
-              const tRetry = toast({
-                kind: "info",
-                title: "Retrying with raw signature…",
-                detail: `<span class="spinner"></span> sign again in MetaMask`,
-                timeout: 0,
-              });
-              try {
-                const rawSig = await state.provider.send("eth_sign", [state.address, digest]);
-                tRetry.remove();
-                const tSub2 = toast({ kind: "info", title: "Submitting receipt…", detail: `<span class="spinner"></span> confirming`, timeout: 0 });
-                tx = await state.payPerCall.submitReceipt(callId, responseHash, rawSig);
-                await tx.wait();
-                tSub2.remove();
-              } catch (retryErr) {
-                tRetry.remove();
-                throw retryErr;
-              }
-            } else {
-              tSub.remove();
-              throw submitErr;
-            }
-          }
-
-          if (tx) {
-            try { await tx.wait(); } catch {}
-            tSub?.remove?.();
-          }
-
+          const tx = await state.payPerCall.submitReceipt(callId, responseHash, signature);
+          await tx.wait();
+          tSub.remove();
           toast({
             kind: "ok",
-            title: "✅ Receipt submitted",
+            title: "Receipt submitted",
             link: txLink(tx.hash),
-            detail: "Payment released to provider wallet",
+            detail: "escrow released to provider",
           });
           await refreshAll();
         } catch (e) {
-          tSign?.remove?.();
           console.error(e);
-          if (e?.code === 4001 || e?.code === "ACTION_REJECTED" || e?.message?.includes("rejected")) {
-            toast({ kind: "err", title: "Transaction rejected", detail: "You rejected the MetaMask prompt." });
-          } else {
-            toast({ kind: "err", title: "Receipt failed", detail: friendlyError(e) });
-          }
+          toast({ kind: "err", title: "Receipt failed", detail: friendlyError(e) });
         } finally {
           btn.disabled = false;
           btn.textContent = origText;
@@ -5228,47 +4945,25 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         const origText = btn.textContent;
         btn.textContent = "Processing…";
 
-        const t = toast({
-          kind: "info",
-          title: "Claiming timeout…",
-          detail: `<span class="spinner"></span> confirm in MetaMask`,
-          timeout: 0,
-        });
-
         try {
-          // Re-fetch signer fresh — some wallets lose connection silently
-          try {
-            state.signer = await state.provider.getSigner();
-            state.payPerCall = state.payPerCall.connect(state.signer);
-          } catch (signerErr) {
-            console.warn("signer refresh failed, using existing:", signerErr.message);
-          }
-
-          const tx = await state.payPerCall.claimTimeout(callId);
-          t.remove();
-          const tWait = toast({
+          const t = toast({
             kind: "info",
-            title: "Transaction sent…",
-            detail: `<span class="spinner"></span> waiting for confirmation`,
+            title: "Claiming timeout…",
+            detail: `<span class="spinner"></span> waiting for signature`,
             timeout: 0,
           });
+          const tx = await state.payPerCall.claimTimeout(callId);
           await tx.wait();
-          tWait.remove();
+          t.remove();
           toast({
             kind: "ok",
-            title: "✅ Timeout claimed — provider slashed",
+            title: "Timeout claimed — provider slashed",
             link: txLink(tx.hash),
           });
           await refreshAll();
         } catch (e) {
-          t.remove();
           console.error(e);
-          // User rejected
-          if (e?.code === 4001 || e?.code === "ACTION_REJECTED" || e?.message?.includes("rejected")) {
-            toast({ kind: "err", title: "Transaction rejected", detail: "You rejected the MetaMask prompt." });
-          } else {
-            toast({ kind: "err", title: "Timeout failed", detail: friendlyError(e) });
-          }
+          toast({ kind: "err", title: "Timeout failed", detail: friendlyError(e) });
         } finally {
           btn.disabled = false;
           btn.textContent = origText;
@@ -5276,14 +4971,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       // -------- Event subscription --------
-      let _eventsSubscribed = false;
       function subscribeToEvents() {
-        if (_eventsSubscribed) {
-          // Already subscribed — remove old listeners first to prevent duplicates
-          try { state.payPerCall.removeAllListeners(); } catch {}
-          try { state.registry.removeAllListeners(); } catch {}
-        }
-        _eventsSubscribed = true;
         // Clear empty state once first event arrives
         let gotFirst = false;
         const clearEmpty = () => {
@@ -5300,11 +4988,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           const key = `${log.transactionHash}:${log.index ?? log.logIndex ?? 0}`;
           if (state.seenEvents.has(key)) return false;
           state.seenEvents.add(key);
-          // Cap to prevent unbounded memory growth in long sessions
-          if (state.seenEvents.size > 2000) {
-            const oldest = state.seenEvents.values().next().value;
-            state.seenEvents.delete(oldest);
-          }
           return true;
         };
 
@@ -5329,22 +5012,20 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             } catch {}
             state.myCalls.set(callId, {
               callId,
-              providerId: Number(providerId),
+              providerId,
               caller,
               amount,
               deadline: deadlineNum,
               startedAt,
               totalSec,
-              status: 1, // always number
+              status: 1,
             });
             // Auto-fill receipt + timeout fields with the latest call id
             $("rcpCallId").value = callId;
-            $("rcpCallId").dispatchEvent(new Event("input"));
             $("toCallId").value = callId;
             renderCalls();
           }
-          invalidateLogCache();
-          debouncedRefresh();
+          refreshAll();
           bumpUnseen();
         });
 
@@ -5358,11 +5039,10 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             body: `receipt signed for call <span class="hi">${short(callId, 6)}</span>`,
           });
           if (state.myCalls.has(callId)) {
-            state.myCalls.get(callId).status = 2; // completed
+            state.myCalls.get(callId).status = 2;
             renderCalls();
           }
-          invalidateLogCache();
-          debouncedRefresh();
+          refreshAll();
           bumpUnseen();
         });
 
@@ -5376,11 +5056,10 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             body: `call <span class="hi">${short(callId, 6)}</span> timed out · refund ${ethers.formatUnits(refunded, state.usdcDecimals)} + slash ${ethers.formatUnits(slashed, state.usdcDecimals)} USDC`,
           });
           if (state.myCalls.has(callId)) {
-            state.myCalls.get(callId).status = 3; // slashed
+            state.myCalls.get(callId).status = 3;
             renderCalls();
           }
-          invalidateLogCache();
-          debouncedRefresh();
+          refreshAll();
           bumpUnseen();
         });
 
@@ -5393,7 +5072,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             txHash: ev.log?.transactionHash,
             body: `#${providerId} registered by <span class="hi">${short(owner, 4)}</span> · ${ethers.formatUnits(stake, state.usdcDecimals)} USDC staked`,
           });
-          debouncedRefresh();
+          refreshAll();
           bumpUnseen();
         });
 
@@ -5407,7 +5086,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             txHash: ev.log?.transactionHash,
             body: `#${providerId} reputation updated · <span class="hi">${completed}</span> completed, <span class="hi">${slashed}</span> slashed`,
           });
-          debouncedRefresh();
+          refreshAll();
           bumpUnseen();
         });
       }
@@ -5423,45 +5102,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           ${txHash ? `<a class="feed-link" href="${txLink(txHash)}" target="_blank" rel="noreferrer" title="${txHash} — click to open in Arcscan">${short(txHash, 4)} ↗</a>` : ""}
         `;
         $("feed").prepend(row);
-        // Cap feed at 50 entries to prevent unbounded DOM growth
-        const feedEl = $("feed");
-        while (feedEl.children.length > 50) {
-          feedEl.removeChild(feedEl.lastChild);
-        }
-      }
-
-
-      function renderMyStats() {
-        const calls = Array.from(state.myCalls.values());
-        if (calls.length === 0) return;
-
-        const panel = $("myStatsPanel");
-        if (panel) panel.style.display = "";
-
-        const total     = calls.length;
-        const completed = calls.filter(c => Number(c.status) === 2).length;
-        const pending   = calls.filter(c => Number(c.status) === 1).length;
-        const slashed   = calls.filter(c => Number(c.status) === 3).length;
-        // Note: status can be stored as number or BigInt depending on source — normalize
-
-        const d = state.usdcDecimals;
-        const spent = calls.reduce((acc, c) => acc + (c.amount ?? 0n), 0n);
-
-        // Recovered = refunds from slashed calls (amount back) + slash bonus
-        // We approximate: for each slashed call, caller got amount back
-        const slashedCalls = calls.filter(c => Number(c.status) === 3);
-        const recovered = slashedCalls.reduce((acc, c) => acc + (c.amount ?? 0n), 0n);
-
-        $("msTotal").textContent     = total;
-        $("msCompleted").textContent = completed;
-        $("msPending").textContent   = pending;
-        $("msSlashed").textContent   = slashed;
-        $("msSpent").textContent     = parseFloat(ethers.formatUnits(spent, d)).toFixed(2);
-        $("msRecovered").textContent = parseFloat(ethers.formatUnits(recovered, d)).toFixed(2);
-
-        const honorRate = total > 0 ? ((completed / total) * 100).toFixed(0) : "—";
-        const sub = $("myStatsSub");
-        if (sub) sub.textContent = `${total} call${total === 1 ? "" : "s"} · ${honorRate}% fulfilled`;
       }
 
       // Track which calls have already triggered deadline warnings to avoid repeat toasts
@@ -5484,7 +5124,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           .map((c) => {
             const s = Number(c.status);
             const canSubmit = s === 1 && c.deadline > nowSec;
-            const canTimeout = s === 1 && nowSec > 0 && c.deadline <= nowSec;
+            const canTimeout = s === 1 && c.deadline <= nowSec;
             const secsLeft = c.deadline ? Math.round(c.deadline - nowSec) : null;
 
             // SLA progress bar — needs startedAt; fall back to deadline - maxResponseTime if not stored
@@ -5564,7 +5204,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           .join("");
 
         $("callsSummary").textContent = `${calls.length} total · ${calls.filter((c) => c.status === 1).length} pending`;
-        renderMyStats();
 
         // Hook up action buttons
         $("callsBox")
@@ -5582,7 +5221,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                 $("actionReceipt").open = true;
                 $("rcpPayload").focus();
               } else if (a === "fill-timeout") {
-                // Direkt MetaMask aç — forma gitme
                 $("toCallId").value = id;
                 doTimeout();
               }
@@ -5591,65 +5229,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       // Update call countdowns every second
-      // Guard: only run after connect() populates myCalls, and only when
-      // there are pending calls (status=1) so we don't redraw needlessly.
-      let _countdownStarted = false;
-      function startCountdownTick() {
-        if (_countdownStarted) return;
-        _countdownStarted = true;
-        setInterval(() => {
-          if (!state.address) return;
-          const nowSec = Date.now() / 1000;
-          const pendingCalls = Array.from(state.myCalls.values()).filter(c => Number(c.status) === 1);
-          if (pendingCalls.length === 0) return;
-
-          let needsFullRender = false;
-          for (const c of pendingCalls) {
-            if (!c.deadline) continue;
-            const secsLeft = Math.round(c.deadline - nowSec);
-            // Find the row in the DOM and update only its countdown span
-            const row = document.querySelector(`[data-callid="${c.callId}"]`);
-            if (!row) { needsFullRender = true; continue; } // row missing — need full render
-
-            const countdownEl = row.querySelector(".countdown");
-            const subLine = row.querySelector(".sub-line");
-            const slashBtn = row.querySelector('[data-action="fill-timeout"]');
-            const receiptBtn = row.querySelector('[data-action="fill-receipt"]');
-
-            if (secsLeft <= 0) {
-              // Transition: pending → expired (need to swap buttons)
-              if (receiptBtn || !slashBtn) { needsFullRender = true; break; }
-              if (countdownEl) { countdownEl.className = "countdown expired"; countdownEl.textContent = "expired"; }
-            } else {
-              const mm = String(Math.floor(secsLeft / 60)).padStart(2, "0");
-              const ss = String(secsLeft % 60).padStart(2, "0");
-              const cls = secsLeft > 30 ? "" : secsLeft > 10 ? "warn" : "urgent";
-              const icon = secsLeft > 30 ? "⏱" : secsLeft > 10 ? "⚠️" : "🚨";
-              if (countdownEl) {
-                countdownEl.className = `countdown ${cls}`;
-                countdownEl.textContent = `${icon} ${mm}:${ss}`;
-              }
-              // Update SLA bar width
-              const barFill = row.querySelector(".sla-bar-fill");
-              if (barFill && c.totalSec > 0) {
-                const pct = Math.max(0, Math.min(100, (secsLeft / c.totalSec) * 100));
-                barFill.style.width = pct.toFixed(1) + "%";
-                barFill.className = "sla-bar-fill " + (pct > 40 ? "ok" : pct > 15 ? "warn" : "crit");
-              }
-            }
-            // Warning toasts
-            if (secsLeft <= 30 && secsLeft > 10 && !_warnedAt30.has(c.callId)) {
-              _warnedAt30.add(c.callId);
-              toast({ kind: "info", title: "⚠️ SLA deadline approaching", detail: `call ${short(c.callId, 6)} · ${secsLeft}s left — sign receipt now`, timeout: 8000 });
-            }
-            if (secsLeft <= 10 && secsLeft > 0 && !_warnedAt10.has(c.callId)) {
-              _warnedAt10.add(c.callId);
-              toast({ kind: "err", title: "🚨 Last 10 seconds!", detail: `call ${short(c.callId, 6)} · deadline expiring!`, timeout: 12000 });
-            }
-          }
-          if (needsFullRender) renderCalls();
-        }, 1000);
-      }
+      setInterval(() => {
+        if (state.myCalls.size > 0) renderCalls();
+      }, 1000);
 
       // Auto-refresh leaderboard + network stats every 30 seconds
       setInterval(() => {
@@ -5756,13 +5338,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       // -------- Multi-provider call --------
       async function doMultiCall() {
-        // Refresh signer before multi-call — wallets can disconnect silently
-        try {
-          state.signer = await state.provider.getSigner();
-          state.payPerCall = state.payPerCall.connect(state.signer);
-          state.usdc = state.usdc.connect(state.signer);
-        } catch {}
-
         const inputs = document.querySelectorAll(".multi-pid");
         const ids = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
         const payload = $("multiPayload").value;
@@ -5774,7 +5349,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           return;
         }
         if (ids.length > 3) {
-          toast({ kind: "err", title: "Max 3 providers for multi-call", detail: "Remove extra providers and try again." });
+          toast({ kind: "err", title: "Max 3 providers for multi-call" });
           return;
         }
 
@@ -5798,17 +5373,12 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
           // Total needed
           const totalNeeded = providerData.reduce((acc, { p }) => p && p.active ? acc + p.pricePerCall : acc, 0n);
-          // Check session budget
-          if (totalNeeded > 0n) {
-            const totalFloat = parseFloat(ethers.formatUnits(totalNeeded, state.usdcDecimals));
-            if (!checkBudget(totalFloat)) { btn.disabled = false; btn.textContent = orig; return; }
-          }
           if (totalNeeded > 0n) {
             const allowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
             if (allowance < totalNeeded) {
               btn.textContent = "Approve USDC (1/1)…";
               toast({ kind: "info", title: "Approving USDC for all calls…", detail: "<span class='spinner'></span> one approval for all providers", timeout: 0 });
-              const txA = await state.usdc.approve(CONFIG.payPerCall, totalNeeded);
+              const txA = await state.usdc.approve(CONFIG.payPerCall, ethers.MaxUint256);
               await txA.wait();
               // Remove approval toast
               document.querySelectorAll(".toast.info").forEach(t => t.remove());
@@ -5897,13 +5467,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       async function sendWebhookNotification(msg) {
         const url = getWebhookUrl();
         if (!url) return;
-        // Discord webhooks block direct browser fetch (CORS).
-        // We use no-cors mode so the request is sent as a "fire and forget"
-        // opaque request — Discord receives it but we can't read the response.
         try {
           await fetch(url, {
             method: "POST",
-            mode: "no-cors",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content: `**ArcSLA** · ${msg}` }),
           });
@@ -5990,19 +5556,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       $("btnTestWebhook").addEventListener("click", async () => {
         const url = $("webhookUrl").value.trim();
         if (!url) { toast({ kind: "err", title: "Enter a webhook URL first" }); return; }
-        if (!url.includes("discord.com/api/webhooks")) {
-          toast({ kind: "err", title: "Invalid URL", detail: "Must be a Discord webhook URL (discord.com/api/webhooks/…)" });
-          return;
-        }
         try {
-          // Discord blocks CORS — use no-cors (fire-and-forget opaque request)
-          await fetch(url, {
-            method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: "**ArcSLA** · test notification ✓" })
-          });
-          toast({ kind: "ok", title: "Test sent! Check your Discord channel.", detail: "Note: browser CORS prevents read-back — if nothing appears, verify your webhook URL.", timeout: 6000 });
+          await fetch(url, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ content: "**ArcSLA** · test notification ✓" }) });
+          toast({ kind: "ok", title: "Test sent to Discord!", timeout: 4000 });
         } catch(e) {
           toast({ kind: "err", title: "Failed to reach webhook", detail: e.message });
         }
@@ -6163,9 +5719,9 @@ console.log("call opened:", tx.hash);`;
         $("disputeReason").value = "";
         $("disputeExpected").value = "";
         if (withinWindow) {
-          toast({ kind: "info", title: "⚠️ Dispute recorded locally", detail: "Stored in your browser only. No on-chain action was taken. On-chain arbitration is planned for v2.", timeout: 8000 });
+          toast({ kind: "ok", title: "Dispute filed within the 5-minute window", detail: "Stored locally · on-chain arbitration coming in v2", timeout: 7000 });
         } else {
-          toast({ kind: "info", title: "Dispute recorded (outside window)", detail: "Stored locally only. This dispute is outside the 5-minute window and will not qualify for on-chain arbitration.", timeout: 8000 });
+          toast({ kind: "info", title: "Dispute filed (outside 5-minute window)", detail: "This dispute is recorded but may not qualify for on-chain arbitration", timeout: 7000 });
         }
       }
 
@@ -6311,10 +5867,10 @@ console.log("call opened:", tx.hash);`;
         localStorage.setItem("arcsla_price_overrides", JSON.stringify(priceOverrides));
 
         toast({
-          kind: "info",
-          title: `⚠️ Price saved locally only`,
-          detail: `${priceNum} USDC/call intent stored. The current contract does not support on-chain price updates — to change your price on-chain, you must re-register with the new price. On-chain updatePrice() is planned for v2.`,
-          timeout: 12000,
+          kind: "ok",
+          title: `Price intent saved: ${priceNum} USDC/call`,
+          detail: "Stored locally. On-chain updatePrice() function is planned for v2 — re-register with the new price to apply it on-chain now.",
+          timeout: 10000,
         });
 
         const hint = $("updatePriceHint");
@@ -6371,24 +5927,19 @@ console.log("call opened:", tx.hash);`;
       const _origOpenProviderModal = openProviderModal;
 
       // These overrides use window properties so JS hoisting doesn't cause issues
-      let _refreshProviderRunning = false;
       window._patchedRefreshProvider = async function() {
-        // Guard against re-entrancy
-        if (_refreshProviderRunning) return refreshProvider();
-        _refreshProviderRunning = true;
-        try {
-          await refreshProvider();
-          if (state.providerInfo && window._pendingTags !== undefined && window._pendingTags !== null) {
-            saveTags(state.providerInfo.id, window._pendingTags);
-            saveSubProviders(state.providerInfo.id, window._pendingSubProviders || []);
-            window._pendingTags = null;
-            window._pendingSubProviders = null;
-            renderTagFilter();
-          }
-          maybeShowUpdatePrice();
-        } finally {
-          _refreshProviderRunning = false;
+        const patch = window._patchedRefreshProvider;
+        window._patchedRefreshProvider = null;
+        await refreshProvider();
+        window._patchedRefreshProvider = patch;
+        if (state.providerInfo && window._pendingTags) {
+          saveTags(state.providerInfo.id, window._pendingTags);
+          saveSubProviders(state.providerInfo.id, window._pendingSubProviders || []);
+          window._pendingTags = null;
+          window._pendingSubProviders = null;
+          renderTagFilter();
         }
+        maybeShowUpdatePrice();
       };
 
       window._patchedRenderAllProviders = function() {
@@ -6531,24 +6082,20 @@ console.log("call opened:", tx.hash);`;
         resultEl.textContent = "⏳ Pinging…";
         const t0 = Date.now();
         try {
-          // no-cors: browser sends the request but blocks the response body.
-          // If fetch() resolves (even as opaque), the server responded.
-          // If it throws, the server is unreachable or timed out.
-          await fetch(url, { method: "GET", mode: "no-cors", signal: AbortSignal.timeout(5000) });
+          const res = await fetch(url, { method: "GET", mode: "no-cors", signal: AbortSignal.timeout(5000) });
           const ms = Date.now() - t0;
           resultEl.style.color = "var(--accent)";
-          resultEl.textContent = `✓ Server responded in ${ms}ms (CORS headers not checked — endpoint is reachable)`;
+          resultEl.textContent = `✓ Reachable — responded in ${ms}ms`;
         } catch (err) {
           const ms = Date.now() - t0;
-          if (err.name === "TimeoutError" || err.name === "AbortError") {
+          if (err.name === "TimeoutError") {
             resultEl.style.color = "var(--danger)";
-            resultEl.textContent = `✗ No response after 5s — endpoint may be down or blocking`;
-          } else if (err.message && err.message.toLowerCase().includes("failed to fetch")) {
-            resultEl.style.color = "var(--danger)";
-            resultEl.textContent = `✗ Connection refused or network error (${ms}ms)`;
+            resultEl.textContent = `✗ Timed out after 5s — endpoint may be down`;
           } else {
+            // no-cors can throw TypeError even on success in some browsers
+            const ms2 = Date.now() - t0;
             resultEl.style.color = "var(--warn)";
-            resultEl.textContent = `~ ${err.message || "Unknown error"} (${ms}ms)`;
+            resultEl.textContent = `~ Could not verify (CORS restricted) — ${ms2}ms`;
           }
         }
       });
@@ -6598,7 +6145,9 @@ console.log("call opened:", tx.hash);`;
         return results;
       }
 
-      // keccak256 topic selectors (computed correctly via ethers.id)
+      // keccak256 topic selectors (pre-computed)
+      const TOPIC_CALL_STARTED       = "0x" + "f5e6c3b0c0b9b7e1e0e4b7c1d0e4a5e3b2f4a1e2d3c4b5a6e7f8091a2b3c4d5e6f7".slice(0, 64);
+      // We'll compute them properly using ethers.id
       const TOPICS = {
         CallStarted:       ethers.id("CallStarted(bytes32,uint256,address,uint256,bytes32,uint32)"),
         ReceiptSubmitted:  ethers.id("ReceiptSubmitted(bytes32,bytes32)"),
