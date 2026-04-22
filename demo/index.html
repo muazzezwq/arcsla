@@ -2561,6 +2561,7 @@
             <span class="label">USDC</span>
             <span class="amount" id="usdcBal">0.00</span>
           </div>
+          <button class="btn" id="browseBtn" style="margin-right:4px">Browse without wallet</button>
           <button class="btn btn-primary" id="connectBtn">Connect wallet</button>
           <div class="addr-pill hidden" id="addrPill" title="Click to copy">
             <span id="addrText"></span>
@@ -2760,6 +2761,33 @@
         </div>
         <!-- ===== /GUIDE TABS ===== -->
 
+        <!-- READ-ONLY MODE: public provider directory -->
+        <div id="readonlyPanel" class="hidden" style="margin: 32px auto 0; max-width: 860px;">
+          <div style="background: var(--bg-1); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow-sm);">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding: 16px 22px; border-bottom: 1px solid var(--border);">
+              <h2 style="margin:0; font-size:12px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-dim);">Public Provider Directory</h2>
+              <span class="mono" style="font-size:11px; color:var(--text-faint)">read-only · no wallet needed</span>
+            </div>
+            <div style="padding:16px 22px;">
+              <div id="readonlyStats" style="display:grid; grid-template-columns: repeat(3,1fr); gap:12px; margin-bottom:16px;">
+                <div style="padding:14px; background:var(--bg-2); border:1px solid var(--border); border-radius:8px; text-align:center;">
+                  <div class="mono" style="font-size:24px; font-weight:700; color:var(--text)" id="roProviders">—</div>
+                  <div style="font-size:11px; color:var(--text-faint); margin-top:4px">Providers</div>
+                </div>
+                <div style="padding:14px; background:var(--bg-2); border:1px solid var(--border); border-radius:8px; text-align:center;">
+                  <div class="mono" style="font-size:24px; font-weight:700; color:var(--accent)" id="roCalls">—</div>
+                  <div style="font-size:11px; color:var(--text-faint); margin-top:4px">Total Calls</div>
+                </div>
+                <div style="padding:14px; background:var(--bg-2); border:1px solid var(--border); border-radius:8px; text-align:center;">
+                  <div class="mono" style="font-size:24px; font-weight:700; color:var(--danger)" id="roSlashes">—</div>
+                  <div style="font-size:11px; color:var(--text-faint); margin-top:4px">Slashes</div>
+                </div>
+              </div>
+              <div id="readonlyProviderList"><div class="empty-state">Loading providers…</div></div>
+            </div>
+          </div>
+        </div>
+
         <div class="landing-feed-box">
           <div class="lfb-head">
             <h3>Live activity</h3>
@@ -2888,8 +2916,11 @@
                 </div>
                 <div class="field">
                   <label>Endpoint <span style="color: var(--text-faint); font-weight: 400; font-size: 11px;">(optional)</span> <span class="tip" data-tip="URL where your off-chain service is reachable. Stored on-chain so callers can find you. Not validated by the contract — for testing, any value works (including blank).">?</span></label>
-                  <input type="text" id="regEndpoint" placeholder="https://api.example.com — or leave blank for testing" />
-                  <div class="hint">
+                  <div style="display:flex; gap:8px; align-items:flex-end;">
+                    <input type="text" id="regEndpoint" placeholder="https://api.example.com — or leave blank for testing" style="flex:1" />
+                    <button class="btn btn-sm" id="btnPingEndpoint" type="button" title="Test if endpoint is reachable">Ping</button>
+                  </div>
+                  <div class="hint" id="pingResult">
                     Just testing the demo? Leave this blank or put any URL. In production, this is where callers would send API requests after paying.
                   </div>
                 </div>
@@ -2930,6 +2961,16 @@
                   <input type="text" id="callProviderId" placeholder="1" />
                   <div class="hint" id="callProviderHint">
                     Enter a provider id to fetch SLA terms.
+                  </div>
+                  <div id="callerRiskBox" style="display:none; margin-top:10px; padding:12px 14px; background:var(--bg-2); border:1px solid var(--border); border-radius:8px; font-family:var(--font-mono); font-size:12px;">
+                    <div style="font-size:11px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; color:var(--text-dim); margin-bottom:8px;">📊 Cost & Risk Estimate</div>
+                    <div style="display:grid; gap:6px;">
+                      <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-faint)">You pay</span><span id="crCost" style="font-weight:600">—</span></div>
+                      <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-faint)">If timeout: you get back</span><span id="crRefund" style="font-weight:600; color:var(--accent)">—</span></div>
+                      <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-faint)">Slash bonus on timeout</span><span id="crSlash" style="font-weight:600; color:var(--accent)">—</span></div>
+                      <div style="display:flex; justify-content:space-between; border-top:1px solid var(--border); padding-top:6px; margin-top:2px;"><span style="color:var(--text-faint)">Provider SLA window</span><span id="crSla" style="font-weight:600">—</span></div>
+                      <div style="display:flex; justify-content:space-between;"><span style="color:var(--text-faint)">Provider reputation</span><span id="crRep" style="font-weight:600">—</span></div>
+                    </div>
                   </div>
                 </div>
                 <div class="field">
@@ -3822,16 +3863,42 @@
             })
             .join("");
 
+          // Build slash rate trend line (% of calls slashed per hour)
+          const slashRates = buckets.map(b => b.calls > 0 ? (b.slashes / b.calls) * 100 : 0);
+          const maxRate = Math.max(1, ...slashRates);
+          // SVG polyline points (w=100%, h=32px chart overlay)
+          const pts = slashRates.map((r, i) => {
+            const x = (i / 23) * 100;
+            const y = 32 - (r / maxRate) * 28;
+            return `${x.toFixed(1)},${y.toFixed(1)}`;
+          }).join(" ");
+
+          const totalSlashPct = buckets.reduce((a,b) => a + b.calls, 0) > 0
+            ? ((buckets.reduce((a,b) => a + b.slashes, 0) / buckets.reduce((a,b) => a + b.calls, 0)) * 100).toFixed(1)
+            : "0.0";
+
           $("activityChartBox").innerHTML = `
-            <div class="activity-chart">${bars}</div>
-            <div class="chart-legend">
-              <div class="chart-legend-item">
-                <div class="chart-legend-swatch" style="background: var(--accent-dim)"></div>
-                <span>calls</span>
-              </div>
-              <div class="chart-legend-item">
-                <div class="chart-legend-swatch" style="background: var(--danger)"></div>
-                <span>slashes</span>
+            <div class="activity-chart" style="position:relative">${bars}
+              <svg viewBox="0 0 100 32" preserveAspectRatio="none"
+                style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;opacity:0.7">
+                <polyline points="${pts}" fill="none" stroke="var(--danger)" stroke-width="0.8" stroke-dasharray="2,1"/>
+              </svg>
+            </div>
+            <div class="chart-legend" style="justify-content:space-between">
+              <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-faint)">24h slash rate: <strong style="color:${parseFloat(totalSlashPct)>20?'var(--danger)':parseFloat(totalSlashPct)>5?'var(--warn)':'var(--accent)'}">${totalSlashPct}%</strong></span>
+              <div style="display:flex;gap:16px">
+                <div class="chart-legend-item">
+                  <div class="chart-legend-swatch" style="background: var(--accent-dim)"></div>
+                  <span>calls</span>
+                </div>
+                <div class="chart-legend-item">
+                  <div class="chart-legend-swatch" style="background: var(--danger)"></div>
+                  <span>slashes</span>
+                </div>
+                <div class="chart-legend-item">
+                  <div style="width:16px;height:2px;border-top:2px dashed var(--danger);margin-top:4px"></div>
+                  <span>slash rate</span>
+                </div>
               </div>
             </div>
           `;
@@ -3966,6 +4033,13 @@
               </div>
             </div>
 
+            <div class="section-title">Performance</div>
+            <dl class="kv" id="modalPerfStats">
+              <dt>Avg response time</dt><dd id="modalAvgResp">calculating…</dd>
+              <dt>Fastest</dt><dd id="modalFastResp">—</dd>
+              <dt>Slowest</dt><dd id="modalSlowResp">—</dd>
+            </dl>
+
             <div class="section-title">Terms</div>
             <dl class="kv">
               <dt>Owner</dt>
@@ -4005,6 +4079,40 @@
                 : ""
             }
           `;
+
+          // Compute average response time from CallStarted vs ReceiptSubmitted events
+          (async () => {
+            try {
+              const startMap = new Map();
+              for (const l of startedLogs) {
+                startMap.set(l.args.callId, l.blockNumber);
+              }
+              const receiptFull = await safeQuery(state.payPerCall, "ReceiptSubmitted");
+              const BLOCK_TIME = 2; // Arc ~2s
+              const diffs = [];
+              for (const r of receiptFull) {
+                const startBlock = startMap.get(r.args.callId);
+                if (startBlock != null) {
+                  diffs.push((r.blockNumber - startBlock) * BLOCK_TIME);
+                }
+              }
+              const avgEl = document.getElementById("modalAvgResp");
+              const fastEl = document.getElementById("modalFastResp");
+              const slowEl = document.getElementById("modalSlowResp");
+              if (diffs.length === 0) {
+                if (avgEl) avgEl.textContent = "no data yet";
+                if (fastEl) fastEl.textContent = "—";
+                if (slowEl) slowEl.textContent = "—";
+              } else {
+                const avg = (diffs.reduce((a, b) => a + b, 0) / diffs.length).toFixed(1);
+                const fast = Math.min(...diffs);
+                const slow = Math.max(...diffs);
+                if (avgEl) avgEl.textContent = `~${avg}s (${diffs.length} receipts)`;
+                if (fastEl) fastEl.textContent = `${fast}s`;
+                if (slowEl) slowEl.textContent = `${slow}s`;
+              }
+            } catch {}
+          })();
 
           const callBtn = document.getElementById("modalCallBtn");
           if (callBtn) {
@@ -4590,8 +4698,8 @@
                   _warnedAt30.add(c.callId);
                   toast({
                     kind: "info",
-                    title: "⚠️ SLA deadline yaklaşıyor",
-                    detail: `call ${short(c.callId, 6)} · ${secsLeft}s kaldı — makbuzu hemen imzalayın`,
+                    title: "⚠️ SLA deadline approaching",
+                    detail: `call ${short(c.callId, 6)} · ${secsLeft}s left — sign receipt now`,
                     timeout: 8000,
                   });
                 }
@@ -4599,8 +4707,8 @@
                   _warnedAt10.add(c.callId);
                   toast({
                     kind: "err",
-                    title: "🚨 Son 10 saniye!",
-                    detail: `call ${short(c.callId, 6)} · deadline dolmak üzere!`,
+                    title: "🚨 Last 10 seconds!",
+                    detail: `call ${short(c.callId, 6)} · deadline expiring!`,
                     timeout: 12000,
                   });
                 }
@@ -4623,6 +4731,7 @@
                   ${barHtml}
                 </div>
                 <div style="display: flex; gap: 6px">
+                  <button class="btn btn-sm" data-action="copy-id" data-callid="${c.callId}" title="Copy call ID">⎘ ID</button>
                   ${canSubmit ? `<button class="btn btn-sm" data-action="fill-receipt" data-callid="${c.callId}">receipt</button>` : ""}
                   ${canTimeout ? `<button class="btn btn-sm btn-danger" data-action="fill-timeout" data-callid="${c.callId}">claim slash</button>` : ""}
                 </div>
@@ -4640,7 +4749,11 @@
             b.addEventListener("click", () => {
               const a = b.dataset.action;
               const id = b.dataset.callid;
-              if (a === "fill-receipt") {
+              if (a === "copy-id") {
+                navigator.clipboard.writeText(id).then(() => {
+                  toast({ kind: "ok", title: "Call ID copied", timeout: 2000 });
+                });
+              } else if (a === "fill-receipt") {
                 $("rcpCallId").value = id;
                 $("actionReceipt").open = true;
                 $("rcpPayload").focus();
@@ -4676,13 +4789,31 @@
           const p = await state.registry.getProvider(BigInt(idStr));
           if (p.owner === ethers.ZeroAddress) {
             $("callProviderHint").textContent = `no provider with id ${idStr}`;
+            $("callerRiskBox").style.display = "none";
             return;
           }
           const d = state.usdcDecimals;
+          const price = ethers.formatUnits(p.pricePerCall, d);
+          const slashPct = Number(p.slashBps) / 100;
           $("callProviderHint").textContent =
-            `${p.active ? "active" : "INACTIVE"} · price ${ethers.formatUnits(p.pricePerCall, d)} USDC · SLA ${p.maxResponseTime}s · slash ${Number(p.slashBps) / 100}%`;
+            `${p.active ? "active" : "INACTIVE"} · price ${price} USDC · SLA ${p.maxResponseTime}s · slash ${slashPct}%`;
+          // Populate risk box
+          const stakeNum = parseFloat(ethers.formatUnits(p.stake, d));
+          const priceNum = parseFloat(price);
+          const slashAmount = (stakeNum * slashPct / 100).toFixed(4);
+          let rep = 66;
+          try { rep = Number(await state.registry.getReputationScore(BigInt(idStr))); } catch {}
+          $("crCost").textContent = `${price} USDC`;
+          $("crRefund").textContent = `${price} USDC`;
+          $("crSlash").textContent = `+${slashAmount} USDC`;
+          $("crSla").textContent = `${p.maxResponseTime}s`;
+          const repColor = rep >= 80 ? "var(--accent)" : rep >= 50 ? "var(--warn)" : "var(--danger)";
+          $("crRep").textContent = `${rep}/100`;
+          $("crRep").style.color = repColor;
+          $("callerRiskBox").style.display = "block";
         } catch (e) {
           $("callProviderHint").textContent = "could not fetch provider info";
+          $("callerRiskBox").style.display = "none";
         }
       });
 
@@ -4769,6 +4900,121 @@
           const item = q.closest(".faq-item");
           item.classList.toggle("open");
         });
+      });
+
+      // -------- Browse without wallet --------
+      $("browseBtn").addEventListener("click", async () => {
+        const panel = $("readonlyPanel");
+        if (!panel.classList.contains("hidden")) {
+          panel.classList.add("hidden");
+          $("browseBtn").textContent = "Browse without wallet";
+          return;
+        }
+        panel.classList.remove("hidden");
+        $("browseBtn").textContent = "Hide directory";
+        // Load read-only stats from RPC
+        try {
+          const SEL_NEXT = ethers.id("nextProviderId()").slice(0, 10);
+          const SEL_DEC  = ethers.id("decimals()").slice(0, 10);
+          const [nextRaw, decRaw] = await Promise.all([
+            rpcCall("eth_call", [{ to: CONFIG.registry, data: SEL_NEXT }, "latest"]).catch(() => null),
+            rpcCall("eth_call", [{ to: CONFIG.usdc, data: SEL_DEC }, "latest"]).catch(() => null),
+          ]);
+          const totalProviders = nextRaw && nextRaw !== "0x" ? Number(BigInt(nextRaw)) - 1 : 0;
+          const decimals = decRaw && decRaw !== "0x" ? Number(BigInt(decRaw)) : 6;
+
+          $("roProviders").textContent = totalProviders.toString();
+
+          // Fetch basic stats from events (reuse boot block)
+          const latestHex = await rpcCall("eth_blockNumber");
+          const latest = Number(BigInt(latestHex));
+          const from = Math.max(0, latest - LOG_SCAN_BLOCKS);
+          const TOPIC_STARTED  = ethers.id("CallStarted(bytes32,uint256,address,uint256,bytes32,uint32)");
+          const TOPIC_SLASHED  = ethers.id("CallSlashed(bytes32,uint256,uint256)");
+          const [startedLogs, slashedLogs] = await Promise.all([
+            fetchLogsChunked(CONFIG.payPerCall, TOPIC_STARTED, from, latest),
+            fetchLogsChunked(CONFIG.payPerCall, TOPIC_SLASHED, from, latest),
+          ]);
+          $("roCalls").textContent = startedLogs.length.toString();
+          $("roSlashes").textContent = slashedLogs.length.toString();
+
+          // Fetch provider list
+          if (totalProviders === 0) {
+            $("readonlyProviderList").innerHTML = `<div class="empty-state">No providers yet.</div>`;
+            return;
+          }
+          const SEL_GET_PROV = ethers.id("getProvider(uint256)").slice(0, 10);
+          const SEL_GET_SCORE = ethers.id("getReputationScore(uint256)").slice(0, 10);
+          const SEL_GET_EP   = ethers.id("getEndpoint(uint256)").slice(0, 10);
+          const pad32 = (n) => n.toString(16).padStart(64, "0");
+          const ids = Array.from({ length: totalProviders }, (_, i) => i + 1);
+
+          const rows = await Promise.all(ids.map(async (id) => {
+            try {
+              const [provRaw, scoreRaw] = await Promise.all([
+                rpcCall("eth_call", [{ to: CONFIG.registry, data: SEL_GET_PROV + pad32(id) }, "latest"]),
+                rpcCall("eth_call", [{ to: CONFIG.registry, data: SEL_GET_SCORE + pad32(id) }, "latest"]).catch(() => "0x0000000000000000000000000000000000000000000000000000000000000042"),
+              ]);
+              if (!provRaw || provRaw === "0x") return null;
+              // Decode: owner(32) signer(32) stake(32) pricePerCall(32) maxResponseTime(32) slashBps(32) active(32)
+              const hex = provRaw.slice(2);
+              const stake = BigInt("0x" + hex.slice(128, 192));
+              const price = BigInt("0x" + hex.slice(192, 256));
+              const maxResp = Number(BigInt("0x" + hex.slice(256, 320)));
+              const slashBps = Number(BigInt("0x" + hex.slice(320, 384)));
+              const active = BigInt("0x" + hex.slice(384, 448)) === 1n;
+              const rep = scoreRaw && scoreRaw !== "0x" ? Number(BigInt(scoreRaw)) : 66;
+              const repColor = rep >= 80 ? "var(--accent)" : rep >= 50 ? "var(--warn)" : "var(--danger)";
+              const stakeF = ethers.formatUnits(stake, decimals);
+              const priceF = ethers.formatUnits(price, decimals);
+              return `<div style="display:grid; grid-template-columns: 40px 1fr auto auto auto auto; gap:10px; align-items:center; padding:10px 14px; border-bottom:1px solid var(--border); font-size:13px; font-family:var(--font-mono);">
+                <span style="color:var(--text-faint)">#${id}</span>
+                <span style="color:var(--text-dim); font-size:11px">${active ? '<span style="color:var(--accent)">● active</span>' : '<span style="color:var(--danger)">● inactive</span>'}</span>
+                <span style="color:var(--text-faint)">${priceF} USDC/call</span>
+                <span style="color:var(--text-faint)">${maxResp}s SLA</span>
+                <span style="color:var(--text-faint)">${(slashBps/100).toFixed(0)}% slash</span>
+                <span style="color:${repColor}; font-weight:700">${rep}</span>
+              </div>`;
+            } catch { return null; }
+          }));
+
+          const validRows = rows.filter(Boolean).join("");
+          $("readonlyProviderList").innerHTML = validRows || `<div class="empty-state">Could not load providers.</div>`;
+        } catch(e) {
+          $("readonlyProviderList").innerHTML = `<div class="empty-state">Failed to load: ${e.message}</div>`;
+        }
+      });
+
+      // -------- Ping endpoint button --------
+      document.addEventListener("click", async (e) => {
+        if (e.target.id !== "btnPingEndpoint") return;
+        const url = $("regEndpoint").value.trim();
+        const resultEl = $("pingResult");
+        if (!url) {
+          resultEl.style.color = "var(--warn)";
+          resultEl.textContent = "⚠ Enter an endpoint URL first.";
+          return;
+        }
+        resultEl.style.color = "var(--text-faint)";
+        resultEl.textContent = "⏳ Pinging…";
+        const t0 = Date.now();
+        try {
+          const res = await fetch(url, { method: "GET", mode: "no-cors", signal: AbortSignal.timeout(5000) });
+          const ms = Date.now() - t0;
+          resultEl.style.color = "var(--accent)";
+          resultEl.textContent = `✓ Reachable — responded in ${ms}ms`;
+        } catch (err) {
+          const ms = Date.now() - t0;
+          if (err.name === "TimeoutError") {
+            resultEl.style.color = "var(--danger)";
+            resultEl.textContent = `✗ Timed out after 5s — endpoint may be down`;
+          } else {
+            // no-cors can throw TypeError even on success in some browsers
+            const ms2 = Date.now() - t0;
+            resultEl.style.color = "var(--warn)";
+            resultEl.textContent = `~ Could not verify (CORS restricted) — ${ms2}ms`;
+          }
+        }
       });
 
       // -------- Boot: read-only stats + landing feed (no wallet needed) --------
