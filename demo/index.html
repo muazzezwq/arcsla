@@ -3476,7 +3476,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       // -------- Config --------
       const CONFIG = {
         chainId: 5042002,
-        chainIdHex: "0x4CEF52",
+        chainIdHex: "0x4CEB92",
         chainName: "Arc Testnet",
         rpcUrl: "https://rpc.testnet.arc.network",
         explorerBase: "https://testnet.arcscan.app",
@@ -3852,7 +3852,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       async function refreshProvider() {
-        if (window._patchedRefreshProvider) { return window._patchedRefreshProvider(); }
         try {
           const id = Number(await state.registry.providerIdOf(state.address));
           const regBtn = $("btnRegister");
@@ -3903,6 +3902,16 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         } catch (e) {
           console.error(e);
         }
+        // Apply pending tags if register just completed
+        if (state.providerInfo && window._pendingTags) {
+          saveTags(state.providerInfo.id, window._pendingTags);
+          saveSubProviders(state.providerInfo.id, window._pendingSubProviders || []);
+          window._pendingTags = null;
+          window._pendingSubProviders = null;
+          renderTagFilter();
+        }
+        // Show/hide update price panel
+        maybeShowUpdatePrice();
       }
 
       function renderProvider() {
@@ -3987,54 +3996,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       function renderAllProviders() {
-        if (window._patchedRenderAllProviders) { return window._patchedRenderAllProviders(); }
-        const d = state.usdcDecimals;
-        const myAddr = state.address?.toLowerCase();
-        const rows = state.allProviders
-          .map((p) => {
-            const isSelf = myAddr && p.owner?.toLowerCase() === myAddr;
-            const badge = p.active
-              ? `<span class="badge active">active</span>`
-              : `<span class="badge inactive">inactive</span>`;
-            const rep = p.reputation ?? 0;
-            const repColor = rep >= 80 ? "var(--accent)" : rep >= 50 ? "var(--warn)" : "var(--danger)";
-            return `
-              <tr data-pid="${p.id}" class="${isSelf ? "is-self" : ""}">
-                <td class="col-id">#${p.id}</td>
-                <td class="col-owner">${short(p.owner, 4)}${isSelf ? `<span class="self-tag">you</span>` : ""}</td>
-                <td class="col-price">${ethers.formatUnits(p.pricePerCall, d)}</td>
-                <td class="col-stake">${ethers.formatUnits(p.stake, d)}</td>
-                <td class="col-sla">${p.maxResponseTime}s · ${Number(p.slashBps) / 100}%</td>
-                <td style="text-align: right; color: ${repColor}; font-weight: 600">${rep}</td>
-                <td class="col-status">${badge}</td>
-              </tr>
-            `;
-          })
-          .join("");
-
-        $("allProvidersBox").innerHTML = `
-          <table class="provider-table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Owner</th>
-                <th style="text-align: right">Price</th>
-                <th style="text-align: right">Stake</th>
-                <th style="text-align: right">SLA · slash</th>
-                <th style="text-align: right">Rep</th>
-                <th style="text-align: right">Status</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        `;
-
-        // Wire up row clicks → open modal
-        $("allProvidersBox")
-          .querySelectorAll("tbody tr[data-pid]")
-          .forEach((tr) => {
-            tr.addEventListener("click", () => openProviderModal(Number(tr.dataset.pid)));
-          });
+        // Delegate to filtered version (handles tag filter + tags display)
+        renderTagFilter();
+        renderAllProvidersFiltered();
       }
 
       // -------- Network stats (on-chain aggregate) --------
@@ -4303,7 +4267,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       // -------- Provider detail modal --------
       async function openProviderModal(providerId) {
-        if (window._patchedOpenProviderModal) { return window._patchedOpenProviderModal(providerId); }
         const root = $("modalRoot");
         root.innerHTML = `
           <div class="modal-backdrop" id="modalBackdrop">
@@ -4527,7 +4490,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                 } else {
                   timeline.innerHTML = slashItems.map(c => {
                     const when = c.deadline ? new Date(c.deadline * 1000).toLocaleString() : "unknown time";
-                    const dispute = (JSON.parse(localStorage.getItem("arcsla_disputes") || "[]")).find(d => d.callId === c.callId);
+                    const dispute = disputes.find(d => d.callId === c.callId);
                     return `<div class="dispute-timeline-item">
                       <div class="dispute-dot danger"></div>
                       <div>
@@ -4553,6 +4516,8 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               $("actionCall").scrollIntoView({ behavior: "smooth", block: "center" });
             });
           }
+          // Inject tags & sub-provider chain directly (no patching needed)
+          injectModalExtras(providerId);
         } catch (e) {
           console.error(e);
           const body = getBody();
@@ -5430,7 +5395,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       // -------- Quality challenge --------
-      const challenges = JSON.parse(localStorage.getItem("arcsla_challenges") || "[]");
+      const challenges = [];  // in-memory per session
 
       function renderChallenges() {
         const el = $("challengeList");
@@ -5454,41 +5419,19 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           return;
         }
         challenges.push({ callId, reason, ts: Date.now() });
-        localStorage.setItem("arcsla_challenges", JSON.stringify(challenges));
+        // challenges stored in-memory only
         renderChallenges();
         $("challengeCallId").value = "";
         $("challengeReason").value = "";
-        toast({ kind: "ok", title: "Response flagged", detail: "Stored locally · on-chain challenge system coming in v2", timeout: 6000 });
+        toast({ kind: "info", title: "Response flagged (session only)", detail: "Stored in-memory for this session. On-chain dispute system coming in v2.", timeout: 6000 });
       }
 
       // -------- Webhook notifications --------
-      function getWebhookUrl() { return localStorage.getItem("arcsla_webhook") || ""; }
+      function getWebhookUrl() { return ""; }  // webhooks disabled (CORS blocked in browser)
 
-      async function sendWebhookNotification(msg) {
-        const url = getWebhookUrl();
-        if (!url) return;
-        try {
-          await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content: `**ArcSLA** · ${msg}` }),
-          });
-        } catch {}
-      }
+      async function sendWebhookNotification(msg) { /* disabled — CORS blocked */ }
 
-      function updateWebhookBadge() {
-        const url = getWebhookUrl();
-        const dot = $("webhookDot");
-        const txt = $("webhookStatusText");
-        if (!dot || !txt) return;
-        if (url) {
-          dot.classList.add("active");
-          txt.textContent = "active";
-        } else {
-          dot.classList.remove("active");
-          txt.textContent = "not configured";
-        }
-      }
+      function updateWebhookBadge() { /* webhooks disabled */ }
 
       // -------- Session budget --------
       let sessionBudget = { limit: 0, spent: 0 };
@@ -5546,27 +5489,13 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       $("btnChallenge").addEventListener("click", doChallenge);
       renderChallenges();
 
-      // Webhook
+      // Webhook — disabled in browser (CORS blocks direct Discord calls)
       $("btnSaveWebhook").addEventListener("click", () => {
-        const url = $("webhookUrl").value.trim();
-        localStorage.setItem("arcsla_webhook", url);
-        updateWebhookBadge();
-        toast({ kind: "ok", title: "Webhook saved", timeout: 3000 });
+        toast({ kind: "info", title: "Webhooks disabled", detail: "Direct Discord webhooks are CORS-blocked in browsers. Use a server-side relay in production.", timeout: 8000 });
       });
-      $("btnTestWebhook").addEventListener("click", async () => {
-        const url = $("webhookUrl").value.trim();
-        if (!url) { toast({ kind: "err", title: "Enter a webhook URL first" }); return; }
-        try {
-          await fetch(url, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ content: "**ArcSLA** · test notification ✓" }) });
-          toast({ kind: "ok", title: "Test sent to Discord!", timeout: 4000 });
-        } catch(e) {
-          toast({ kind: "err", title: "Failed to reach webhook", detail: e.message });
-        }
+      $("btnTestWebhook").addEventListener("click", () => {
+        toast({ kind: "info", title: "Webhooks disabled", detail: "CORS policy blocks direct Discord webhook calls from browsers.", timeout: 6000 });
       });
-      // Load saved webhook
-      const savedWebhook = getWebhookUrl();
-      if (savedWebhook) $("webhookUrl").value = savedWebhook;
-      updateWebhookBadge();
 
       // Budget
       $("btnSetBudget").addEventListener("click", () => {
@@ -5665,9 +5594,9 @@ console.log("call opened:", tx.hash);`;
       // FEATURE 1: Quality Dispute System
       // ================================================================
       const DISPUTE_WINDOW_SEC = 5 * 60; // 5 minutes
-      const disputes = JSON.parse(localStorage.getItem("arcsla_disputes") || "[]");
+      const disputes = [];  // in-memory per session
 
-      function saveDisputes() { localStorage.setItem("arcsla_disputes", JSON.stringify(disputes)); }
+      function saveDisputes() { /* disputes stored in-memory only */ }
 
       function getDisputeForCall(callId) { return disputes.find(d => d.callId === callId); }
 
@@ -5752,18 +5681,16 @@ console.log("call opened:", tx.hash);`;
       // ================================================================
       // FEATURE 2: Capability Tags
       // ================================================================
-      const providerTags = JSON.parse(localStorage.getItem("arcsla_tags") || "{}");
-      const providerSubProviders = JSON.parse(localStorage.getItem("arcsla_subproviders") || "{}");
+      const providerTags = {};  // in-memory per session
+      const providerSubProviders = {};  // in-memory per session
       let activeTagFilter = "all";
 
       function saveTags(providerId, tags) {
         providerTags[providerId] = tags;
-        localStorage.setItem("arcsla_tags", JSON.stringify(providerTags));
       }
 
       function saveSubProviders(providerId, subs) {
         providerSubProviders[providerId] = subs;
-        localStorage.setItem("arcsla_subproviders", JSON.stringify(providerSubProviders));
       }
 
       function getTagsForProvider(id) {
@@ -5861,20 +5788,15 @@ console.log("call opened:", tx.hash);`;
         const priceNum = parseFloat(newPrice);
         const providerId = state.providerInfo.id;
 
-        // Store override locally
-        const priceOverrides = JSON.parse(localStorage.getItem("arcsla_price_overrides") || "{}");
-        priceOverrides[providerId] = { price: priceNum, setAt: Date.now() };
-        localStorage.setItem("arcsla_price_overrides", JSON.stringify(priceOverrides));
-
         toast({
-          kind: "ok",
-          title: `Price intent saved: ${priceNum} USDC/call`,
-          detail: "Stored locally. On-chain updatePrice() function is planned for v2 — re-register with the new price to apply it on-chain now.",
+          kind: "info",
+          title: `Price update: ${priceNum} USDC/call`,
+          detail: "On-chain updatePrice() is planned for v2. To apply now: unstake and re-register with the new price.",
           timeout: 10000,
         });
 
         const hint = $("updatePriceHint");
-        if (hint) hint.textContent = `Intent saved: ${priceNum} USDC/call (applied on-chain in v2)`;
+        if (hint) hint.textContent = `Note: re-register to apply ${priceNum} USDC/call on-chain (v2 will add updatePrice())`;
       }
 
       // Show update price panel when registered
@@ -5897,65 +5819,14 @@ console.log("call opened:", tx.hash);`;
       $("btnUpdatePrice").addEventListener("click", doUpdatePrice);
 
       // ================================================================
-      // FEATURE 5: Save tags & sub-providers on register
-      // (Hooks into doRegister post-success)
+      // Tags & sub-providers: in-memory per session (no persistence)
+      // Tags saved after register completes (called from doRegister success path)
       // ================================================================
-      // We patch the success path of doRegister to also save tags
-      const _origRefreshAll = refreshAll;
-      // Tags are saved when register succeeds — see doRegister patch below
 
       // ================================================================
-      // FEATURE 2+5: Patch renderAllProviders to use filtered version
+      // Provider modal tag/sub-provider injection (called directly)
       // ================================================================
-      // Override the original renderAllProviders
-
-      // ================================================================
-      // Wire: save tags when registration happens
-      // ================================================================
-      document.addEventListener("click", (e) => {
-        if (e.target.id === "btnRegister") {
-          // Capture tags before register fires
-          const tagsRaw = $("regTags")?.value?.trim() || "";
-          const subsRaw = $("regSubProviders")?.value?.trim() || "";
-          window._pendingTags = tagsRaw ? tagsRaw.split(",").map(t => t.trim()).filter(Boolean) : [];
-          window._pendingSubProviders = subsRaw ? subsRaw.split(",").map(s => s.trim()).filter(Boolean) : [];
-        }
-      }, true); // capture phase so it runs before doRegister
-
-      // Patch refreshProvider — wrap original to also save tags after registration
-      const _origRefreshProvider = refreshProvider;
-      const _origOpenProviderModal = openProviderModal;
-
-      // These overrides use window properties so JS hoisting doesn't cause issues
-      window._patchedRefreshProvider = async function() {
-        const patch = window._patchedRefreshProvider;
-        window._patchedRefreshProvider = null;
-        await refreshProvider();
-        window._patchedRefreshProvider = patch;
-        if (state.providerInfo && window._pendingTags) {
-          saveTags(state.providerInfo.id, window._pendingTags);
-          saveSubProviders(state.providerInfo.id, window._pendingSubProviders || []);
-          window._pendingTags = null;
-          window._pendingSubProviders = null;
-          renderTagFilter();
-        }
-        maybeShowUpdatePrice();
-      };
-
-      window._patchedRenderAllProviders = function() {
-        renderTagFilter();
-        renderAllProvidersFiltered();
-      };
-
-      // ================================================================
-      // FEATURE 4+5: Enhance provider modal with tags + sub-providers
-      // ================================================================
-      window._patchedOpenProviderModal = async function(providerId) {
-        // Temporarily disable patch to avoid infinite recursion
-        const patch = window._patchedOpenProviderModal;
-        window._patchedOpenProviderModal = null;
-        await openProviderModal(providerId);
-        window._patchedOpenProviderModal = patch;
+      function injectModalExtras(providerId) {
         // After modal renders, inject tags and sub-provider chain
         setTimeout(() => {
           const body = document.querySelector(".modal-body");
@@ -6069,7 +5940,9 @@ console.log("call opened:", tx.hash);`;
       });
 
       // -------- Ping endpoint button --------
-      document.addEventListener("click", async (e) => {
+      // Note: browser CORS policy prevents direct pinging of arbitrary URLs.
+      // We validate the URL format only; actual reachability must be verified server-side.
+      document.addEventListener("click", (e) => {
         if (e.target.id !== "btnPingEndpoint") return;
         const url = $("regEndpoint").value.trim();
         const resultEl = $("pingResult");
@@ -6078,25 +5951,13 @@ console.log("call opened:", tx.hash);`;
           resultEl.textContent = "⚠ Enter an endpoint URL first.";
           return;
         }
-        resultEl.style.color = "var(--text-faint)";
-        resultEl.textContent = "⏳ Pinging…";
-        const t0 = Date.now();
         try {
-          const res = await fetch(url, { method: "GET", mode: "no-cors", signal: AbortSignal.timeout(5000) });
-          const ms = Date.now() - t0;
+          new URL(url); // validate format
           resultEl.style.color = "var(--accent)";
-          resultEl.textContent = `✓ Reachable — responded in ${ms}ms`;
-        } catch (err) {
-          const ms = Date.now() - t0;
-          if (err.name === "TimeoutError") {
-            resultEl.style.color = "var(--danger)";
-            resultEl.textContent = `✗ Timed out after 5s — endpoint may be down`;
-          } else {
-            // no-cors can throw TypeError even on success in some browsers
-            const ms2 = Date.now() - t0;
-            resultEl.style.color = "var(--warn)";
-            resultEl.textContent = `~ Could not verify (CORS restricted) — ${ms2}ms`;
-          }
+          resultEl.textContent = "✓ URL format valid. Reachability must be verified externally (CORS prevents browser pings).";
+        } catch {
+          resultEl.style.color = "var(--danger)";
+          resultEl.textContent = "✗ Invalid URL format.";
         }
       });
 
