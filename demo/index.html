@@ -3519,22 +3519,55 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         "event CallSlashed(bytes32 indexed callId, uint256 refunded, uint256 slashed)",
       ];
 
-      // -------- State --------
+      // ================================================================
+      // GLOBAL STATE — single source of truth
+      // All data sourced from contract state or contract events only.
+      // No localStorage. No fake confirmations.
+      // ================================================================
       const state = {
-        provider: null, // ethers BrowserProvider
+        // Wallet / connection
+        provider: null,       // ethers.BrowserProvider
         signer: null,
         address: null,
+        chainId: null,        // current connected chain ID
+        // Contracts
         usdc: null,
         registry: null,
         payPerCall: null,
         usdcDecimals: 6,
-        myCalls: new Map(), // callId -> call obj
-        providerInfo: null, // { id, data } or null
-        seenEvents: new Set(), // dedupe key = `${txHash}:${logIndex}`
-        allProviders: [], // public directory
-        networkStats: null, // aggregate metrics
-        actionsInitialized: false, // smart-open action tracking
+        // On-chain data
+        myCalls: new Map(),   // callId → call obj (sourced from chain events)
+        providerInfo: null,   // { id, data } — sourced from registry contract
+        seenEvents: new Set(),// dedupe: `${txHash}:${logIndex}`
+        allProviders: [],     // full provider directory from contract
+        networkStats: null,   // aggregate metrics from contract events
+        actionsInitialized: false,
+        // UX
+        loading: false,       // global loading state — disables buttons
+        // Polling fallback (in case event listener misses an event)
+        lastSyncBlock: 0,
+        pollInterval: null,
+        // In-memory session data (NOT persisted — no localStorage)
+        sessionTags: {},      // providerId → string[]  (capability tags entered by user)
+        sessionSubProviders: {}, // providerId → string[]
+        sessionDisputes: [],  // local dispute log for this session
+        sessionChallenges: [],// local challenge log for this session
       };
+
+      // -------- Loading state helpers --------
+      function setLoading(on) {
+        state.loading = on;
+        // Disable/enable all primary action buttons
+        document.querySelectorAll(".btn-primary, .btn-danger").forEach(btn => {
+          if (on) {
+            btn.setAttribute("data-was-disabled", btn.disabled ? "1" : "0");
+            btn.disabled = true;
+          } else {
+            if (btn.getAttribute("data-was-disabled") !== "1") btn.disabled = false;
+            btn.removeAttribute("data-was-disabled");
+          }
+        });
+      }
 
       // -------- Tab title counter (unseen events) --------
       const titleBase = "ArcSLA · Arc Testnet";
@@ -3628,61 +3661,99 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         }
       }
 
-      // -------- Connection --------
+      // ================================================================
+      // WALLET CONNECTION
+      // Single entry point — cleans up old listeners, validates chain,
+      // initialises contracts, syncs on-chain state.
+      // ================================================================
       async function connect() {
         if (!window.ethereum) {
-          toast({
-            kind: "err",
-            title: "No wallet detected",
-            detail: "Install MetaMask to continue.",
-          });
+          toast({ kind: "err", title: "No wallet detected", detail: "Install MetaMask to continue." });
           return;
         }
-
+        setLoading(true);
         try {
           state.provider = new ethers.BrowserProvider(window.ethereum);
-          // Force wallet popup every time — even if already connected.
-          // wallet_requestPermissions shows the account selector in MetaMask.
-          // Falls back to eth_requestAccounts for wallets that don't support it (Brave, Coinbase etc).
+
+          // Request accounts — fall back to eth_requestAccounts if wallet_requestPermissions unsupported
           try {
-            await window.ethereum.request({
-              method: "wallet_requestPermissions",
-              params: [{ eth_accounts: {} }],
-            });
+            await window.ethereum.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
           } catch (permErr) {
-            // 4200 = method not supported, -32601 = method not found
             if (permErr.code === 4200 || permErr.code === -32601) {
               await state.provider.send("eth_requestAccounts", []);
             } else {
-              throw permErr; // user rejected or other real error
+              throw permErr;
             }
           }
-          state.signer = await state.provider.getSigner();
+
+          state.signer  = await state.provider.getSigner();
           state.address = await state.signer.getAddress();
 
+          // Enforce Arc Testnet — switch or add if needed
           await ensureArcNetwork();
 
-          state.usdc = new ethers.Contract(CONFIG.usdc, ERC20_ABI, state.signer);
-          state.registry = new ethers.Contract(CONFIG.registry, REGISTRY_ABI, state.signer);
-          state.payPerCall = new ethers.Contract(CONFIG.payPerCall, PAY_ABI, state.signer);
+          const net = await state.provider.getNetwork();
+          state.chainId = Number(net.chainId);
 
-          try {
-            state.usdcDecimals = Number(await state.usdc.decimals());
-          } catch {
-            state.usdcDecimals = 6;
-          }
+          // Instantiate contracts with signer
+          state.usdc      = new ethers.Contract(CONFIG.usdc,      ERC20_ABI,    state.signer);
+          state.registry  = new ethers.Contract(CONFIG.registry,  REGISTRY_ABI, state.signer);
+          state.payPerCall = new ethers.Contract(CONFIG.payPerCall, PAY_ABI,     state.signer);
+
+          try { state.usdcDecimals = Number(await state.usdc.decimals()); } catch { state.usdcDecimals = 6; }
 
           showConnected();
+
+          // Initial full data sync from chain
           await refreshAll();
           await loadMyCalls();
-          subscribeToEvents();
 
+          // Real-time event listeners
+          stopEventListeners(); // clean up any stale listeners first
+          subscribeToEvents();
+          startPollingFallback();
+
+          // Reload on wallet change or network switch
+          window.ethereum.removeAllListeners?.("accountsChanged");
+          window.ethereum.removeAllListeners?.("chainChanged");
           window.ethereum.on?.("accountsChanged", () => location.reload());
-          window.ethereum.on?.("chainChanged", () => location.reload());
+          window.ethereum.on?.("chainChanged",    () => location.reload());
+
         } catch (e) {
-          console.error(e);
-          toast({ kind: "err", title: "Connect failed", detail: e.message });
+          console.error("connect() failed:", e);
+          const msg = e.code === 4001 ? "Wallet connection rejected by user."
+                    : e.code === -32002 ? "Wallet request already pending — check MetaMask."
+                    : e.message || "Unknown error";
+          toast({ kind: "err", title: "Connect failed", detail: msg });
+        } finally {
+          setLoading(false);
         }
+      }
+
+      // -------- Listener cleanup --------
+      function stopEventListeners() {
+        try {
+          if (state.payPerCall) state.payPerCall.removeAllListeners();
+          if (state.registry)   state.registry.removeAllListeners();
+        } catch {}
+        if (state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
+      }
+
+      // -------- Polling fallback (fires every 15s, syncs if chain advanced) --------
+      function startPollingFallback() {
+        if (state.pollInterval) clearInterval(state.pollInterval);
+        state.pollInterval = setInterval(async () => {
+          if (!state.address || !state.payPerCall) return;
+          try {
+            const latest = await state.provider.getBlockNumber();
+            if (latest > state.lastSyncBlock + 5) {
+              state.lastSyncBlock = latest;
+              await refreshNetworkStats();
+              await refreshAllProviders();
+              await refreshLeaderboard();
+            }
+          } catch {}
+        }, 15_000);
       }
 
       async function ensureArcNetwork() {
@@ -3771,8 +3842,12 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       // -------- Refresh data --------
+      // ----------------------------------------------------------------
+      // INITIAL DATA SYNC — fetches all on-chain state after connect
+      // or after any contract event fires.
+      // ----------------------------------------------------------------
       async function refreshAll() {
-        // First wave: everything independent can run in parallel
+        // First wave: independent reads — run in parallel
         await Promise.all([
           refreshBalance(),
           refreshProvider(),
@@ -3781,10 +3856,15 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           refreshNetworkStats(),
           refreshActivityChart(),
         ]);
-        // Second wave: depends on state.allProviders being populated
+        // Second wave: leaderboard (needs state.allProviders)
         await refreshLeaderboard();
-        // Third wave: provider dashboard (needs providerInfo)
+        // Third wave: provider dashboard (needs state.providerInfo)
         await refreshProviderDashboard();
+        // Update sync block
+        try {
+          const b = await state.provider?.getBlockNumber();
+          if (b) state.lastSyncBlock = b;
+        } catch {}
       }
 
       // Load existing calls for the connected wallet from on-chain event logs.
@@ -3892,8 +3972,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             regBtn.style.cursor = "not-allowed";
           }
 
-          // Once registered, guide the user to the next natural step: calling
-          // a service. Only on first initialization.
+          // Once registered, guide to the next natural step.
           if (!state.actionsInitialized) {
             if (actionRegister) actionRegister.open = false;
             if (actionCall) actionCall.open = true;
@@ -3902,15 +3981,14 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         } catch (e) {
           console.error(e);
         }
-        // Apply pending tags if register just completed
+        // Apply pending session tags if register just completed
         if (state.providerInfo && window._pendingTags) {
-          saveTags(state.providerInfo.id, window._pendingTags);
-          saveSubProviders(state.providerInfo.id, window._pendingSubProviders || []);
+          state.sessionTags[state.providerInfo.id]         = window._pendingTags;
+          state.sessionSubProviders[state.providerInfo.id] = window._pendingSubProviders || [];
           window._pendingTags = null;
           window._pendingSubProviders = null;
           renderTagFilter();
         }
-        // Show/hide update price panel
         maybeShowUpdatePrice();
       }
 
@@ -4490,7 +4568,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                 } else {
                   timeline.innerHTML = slashItems.map(c => {
                     const when = c.deadline ? new Date(c.deadline * 1000).toLocaleString() : "unknown time";
-                    const dispute = disputes.find(d => d.callId === c.callId);
+                    const dispute = state.sessionDisputes.find(d => d.callId === c.callId);
                     return `<div class="dispute-timeline-item">
                       <div class="dispute-dot danger"></div>
                       <div>
@@ -4541,6 +4619,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       // -------- Actions: register --------
       async function doRegister() {
+        // Network guard — reject if not on Arc Testnet
+        if (state.chainId && state.chainId !== CONFIG.chainId) {
+          toast({ kind: "err", title: "Wrong network", detail: `Switch to Arc Testnet (chain ID ${CONFIG.chainId}) to continue.`, timeout: 8000 });
+          return;
+        }
         const signerAddr = $("regSigner").value.trim() || state.address;
         const stake = $("regStake").value.trim();
         const price = $("regPrice").value.trim();
@@ -4598,11 +4681,12 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
         const btn = $("btnRegister");
         if (btn.disabled) return;
+        setLoading(true);
         btn.disabled = true;
         const origText = btn.textContent;
         btn.textContent = "Processing…";
 
-                try {
+        try {
           const stakeWei = ethers.parseUnits(stake, state.usdcDecimals);
           const priceWei = ethers.parseUnits(price, state.usdcDecimals);
           const slashBps = Math.round(slashPct * 100);
@@ -4656,6 +4740,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           console.error(e);
           toast({ kind: "err", title: "Register failed", detail: friendlyError(e) });
         } finally {
+          setLoading(false);
           btn.disabled = false;
           btn.textContent = origText;
         }
@@ -4685,22 +4770,35 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       function friendlyError(e) {
         if (!e) return "unknown error";
-        // Try custom error selector (first 4 bytes of data)
+        // User rejected
+        if (e.code === "ACTION_REJECTED" || e.code === 4001)
+          return "Transaction rejected by user.";
+        // Wallet request already pending
+        if (e.code === -32002)
+          return "MetaMask is already waiting for a response — check the extension.";
+        // Network / RPC error
+        if (e.code === -32603)
+          return "RPC error — check your network connection and try again.";
+        // Try custom contract error selector (first 4 bytes of revert data)
         const data = e.data || e.error?.data;
         if (typeof data === "string" && data.length >= 10) {
           const sel = data.slice(0, 10).toLowerCase();
           if (ERROR_SELECTORS[sel]) return ERROR_SELECTORS[sel];
         }
-        // Reason string (require messages)
+        // Ethers reason string
         if (e.reason) return e.reason;
-        // User rejected in wallet
-        if (e.code === "ACTION_REJECTED" || e.code === 4001) return "Rejected in wallet.";
-        // Fall back to short generic message
-        return (e.shortMessage || e.message || "transaction reverted").slice(0, 200);
+        // Short message from ethers v6
+        if (e.shortMessage) return e.shortMessage.slice(0, 200);
+        return (e.message || "transaction reverted").slice(0, 200);
       }
 
       // -------- Actions: call service --------
       async function doCall() {
+        // Network guard — reject if not on Arc Testnet
+        if (state.chainId && state.chainId !== CONFIG.chainId) {
+          toast({ kind: "err", title: "Wrong network", detail: `Switch to Arc Testnet (chain ID ${CONFIG.chainId}) to continue.`, timeout: 8000 });
+          return;
+        }
         const idStr = $("callProviderId").value.trim();
         const payload = $("callPayload").value;
 
@@ -4712,6 +4810,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
         const btn = $("btnCall");
         if (btn.disabled) return;
+        setLoading(true);
         btn.disabled = true;
         const origText = btn.textContent;
         btn.textContent = "Processing…";
@@ -4775,11 +4874,10 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             // Auto-fill receipt/timeout fields for convenience
             $("rcpCallId").value = callId;
             $("toCallId").value = callId;
-            // Record spend + webhook
+            // Track session spend (no localStorage)
             try {
               const priceNum = parseFloat(ethers.formatUnits((await state.registry.getProvider(providerId)).pricePerCall, state.usdcDecimals));
               recordSpend(priceNum);
-              sendWebhookNotification(`New call opened → provider #${providerId} · call ${short(callId, 8)}`);
             } catch {}
           }
           await refreshAll();
@@ -4787,6 +4885,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           console.error(e);
           toast({ kind: "err", title: "Call failed", detail: friendlyError(e) });
         } finally {
+          setLoading(false);
           btn.disabled = false;
           btn.textContent = origText;
         }
@@ -4794,6 +4893,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       // -------- Actions: submit receipt --------
       async function doReceipt() {
+        // Network guard — reject if not on Arc Testnet
+        if (state.chainId && state.chainId !== CONFIG.chainId) {
+          toast({ kind: "err", title: "Wrong network", detail: `Switch to Arc Testnet (chain ID ${CONFIG.chainId}) to continue.`, timeout: 8000 });
+          return;
+        }
         const callId = $("rcpCallId").value.trim();
         const payload = $("rcpPayload").value;
 
@@ -4848,6 +4952,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           }
         }
 
+        setLoading(true);
         btn.disabled = true;
         const origText = btn.textContent;
         btn.textContent = "Processing…";
@@ -4891,6 +4996,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           console.error(e);
           toast({ kind: "err", title: "Receipt failed", detail: friendlyError(e) });
         } finally {
+          setLoading(false);
           btn.disabled = false;
           btn.textContent = origText;
         }
@@ -4898,6 +5004,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       // -------- Actions: claim timeout --------
       async function doTimeout() {
+        // Network guard — reject if not on Arc Testnet
+        if (state.chainId && state.chainId !== CONFIG.chainId) {
+          toast({ kind: "err", title: "Wrong network", detail: `Switch to Arc Testnet (chain ID ${CONFIG.chainId}) to continue.`, timeout: 8000 });
+          return;
+        }
         const callId = $("toCallId").value.trim();
         if (!callId || callId.length !== 66) {
           toast({ kind: "err", title: "Enter a 32-byte call ID" });
@@ -4906,6 +5017,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
         const btn = $("btnTimeout");
         if (btn.disabled) return;
+        setLoading(true);
         btn.disabled = true;
         const origText = btn.textContent;
         btn.textContent = "Processing…";
@@ -4930,14 +5042,22 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           console.error(e);
           toast({ kind: "err", title: "Timeout failed", detail: friendlyError(e) });
         } finally {
+          setLoading(false);
           btn.disabled = false;
           btn.textContent = origText;
         }
       }
 
-      // -------- Event subscription --------
+      // ----------------------------------------------------------------
+      // EVENT SUBSCRIPTION
+      // Real-time contract event listeners.
+      // stopEventListeners() is called before re-subscribing to avoid
+      // duplicate handlers (memory leak prevention).
+      // ----------------------------------------------------------------
       function subscribeToEvents() {
-        // Clear empty state once first event arrives
+        // Guard: only subscribe if contracts are ready
+        if (!state.payPerCall || !state.registry) return;
+
         let gotFirst = false;
         const clearEmpty = () => {
           if (gotFirst) return;
@@ -4945,11 +5065,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           $("feed").innerHTML = "";
         };
 
-        // ethers v6 fires the same event multiple times (pending → confirmed,
-        // provider reconnects, etc). Dedupe by tx hash + log index.
         const firstTime = (ev) => {
           const log = ev?.log ?? ev;
-          if (!log?.transactionHash) return true; // can't dedupe, accept
+          if (!log?.transactionHash) return true;
           const key = `${log.transactionHash}:${log.index ?? log.logIndex ?? 0}`;
           if (state.seenEvents.has(key)) return false;
           state.seenEvents.add(key);
@@ -4990,6 +5108,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             $("toCallId").value = callId;
             renderCalls();
           }
+          state.provider?.getBlockNumber().then(b => { state.lastSyncBlock = b; }).catch(() => {});
           refreshAll();
           bumpUnseen();
         });
@@ -5319,6 +5438,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         }
 
         const btn = $("btnMultiCall");
+        setLoading(true);
         btn.disabled = true;
         const orig = btn.textContent;
 
@@ -5379,7 +5499,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                 .find(x => x.name === "CallStarted");
               if (parsed) {
                 row.innerHTML = `#${idStr} — <span style="color:var(--accent)">✓ opened</span> · call ${short(parsed.args.callId, 6)} · <a href="${txLink(tx.hash)}" target="_blank" style="color:var(--accent)">${short(tx.hash, 6)} ↗</a>`;
-                sendWebhookNotification(`Multi-call opened for provider #${idStr} — call ID: ${short(parsed.args.callId, 8)}`);
+                // sendWebhookNotification disabled (CORS blocked)
               }
             } catch(e) {
               row.innerHTML = `#${idStr} — <span style="color:var(--danger)">✗ ${friendlyError(e)}</span>`;
@@ -5389,19 +5509,19 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           toast({ kind: "err", title: "Multi-call failed", detail: friendlyError(e) });
         }
 
+        setLoading(false);
         btn.disabled = false;
         btn.textContent = orig;
         await refreshAll();
       }
 
       // -------- Quality challenge --------
-      const challenges = [];  // in-memory per session
 
       function renderChallenges() {
         const el = $("challengeList");
         if (!el) return;
-        if (challenges.length === 0) { el.innerHTML = ""; return; }
-        el.innerHTML = challenges.slice(-5).reverse().map(c => `
+        if (state.sessionChallenges.length === 0) { el.innerHTML = ""; return; }
+        el.innerHTML = state.sessionChallenges.slice(-5).reverse().map(c => `
           <div style="padding:8px 12px;background:var(--warn-bg);border:1px solid rgba(217,119,6,0.2);border-radius:6px;font-size:12px">
             <span class="challenge-badge">🚩 flagged</span>
             <span style="font-family:var(--font-mono);margin-left:8px;color:var(--text-faint)">${short(c.callId, 8)}</span>
@@ -5418,12 +5538,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           toast({ kind: "err", title: "Fill in both fields" });
           return;
         }
-        challenges.push({ callId, reason, ts: Date.now() });
-        // challenges stored in-memory only
+        state.sessionChallenges.push({ callId, reason, ts: Date.now() });
         renderChallenges();
         $("challengeCallId").value = "";
         $("challengeReason").value = "";
-        toast({ kind: "info", title: "Response flagged (session only)", detail: "Stored in-memory for this session. On-chain dispute system coming in v2.", timeout: 6000 });
+        toast({ kind: "info", title: "Challenge noted (session only)", detail: "⚠ No blockchain transaction sent. On-chain challenge system is not yet deployed. Stored for this session only.", timeout: 8000 });
       }
 
       // -------- Webhook notifications --------
@@ -5594,11 +5713,9 @@ console.log("call opened:", tx.hash);`;
       // FEATURE 1: Quality Dispute System
       // ================================================================
       const DISPUTE_WINDOW_SEC = 5 * 60; // 5 minutes
-      const disputes = [];  // in-memory per session
 
-      function saveDisputes() { /* disputes stored in-memory only */ }
 
-      function getDisputeForCall(callId) { return disputes.find(d => d.callId === callId); }
+      function getDisputeForCall(callId) { return state.sessionDisputes.find(d => d.callId === callId); }
 
       function canDispute(callId) {
         const callObj = Array.from(state.myCalls.values()).find(c => c.callId === callId);
@@ -5612,8 +5729,8 @@ console.log("call opened:", tx.hash);`;
       function renderDisputeList() {
         const el = $("disputeList");
         if (!el) return;
-        if (disputes.length === 0) { el.innerHTML = ""; return; }
-        el.innerHTML = disputes.slice(-5).reverse().map(d => `
+        if (state.sessionDisputes.length === 0) { el.innerHTML = ""; return; }
+        el.innerHTML = state.sessionDisputes.slice(-5).reverse().map(d => `
           <div class="dispute-timeline">
             <div class="dispute-timeline-item">
               <div class="dispute-dot danger"></div>
@@ -5628,9 +5745,17 @@ console.log("call opened:", tx.hash);`;
         `).join("");
       }
 
+      // ================================================================
+      // doDispute — session-local dispute log.
+      // The deployed contract does NOT have a dispute() function yet.
+      // This logs disputes in session memory and informs the user clearly.
+      // When contract v2 ships with dispute(), replace session storage
+      // with: const tx = await state.payPerCall.dispute(callId, reason);
+      //        await tx.wait();
+      // ================================================================
       function doDispute() {
-        const callId = $("disputeCallId").value.trim();
-        const reason = $("disputeReason").value.trim();
+        const callId  = $("disputeCallId").value.trim();
+        const reason  = $("disputeReason").value.trim();
         const expected = $("disputeExpected").value.trim();
         if (!callId || !reason) {
           toast({ kind: "err", title: "Fill in call ID and reason" });
@@ -5640,18 +5765,23 @@ console.log("call opened:", tx.hash);`;
           toast({ kind: "err", title: "Dispute already filed for this call" });
           return;
         }
+        if (!state.address) {
+          toast({ kind: "err", title: "Connect wallet first" });
+          return;
+        }
         const withinWindow = canDispute(callId);
-        disputes.push({ callId, reason, expected, ts: Date.now(), withinWindow });
-        saveDisputes();
+        state.sessionDisputes.push({ callId, reason, expected, ts: Date.now(), withinWindow });
         renderDisputeList();
         $("disputeCallId").value = "";
         $("disputeReason").value = "";
         $("disputeExpected").value = "";
-        if (withinWindow) {
-          toast({ kind: "ok", title: "Dispute filed within the 5-minute window", detail: "Stored locally · on-chain arbitration coming in v2", timeout: 7000 });
-        } else {
-          toast({ kind: "info", title: "Dispute filed (outside 5-minute window)", detail: "This dispute is recorded but may not qualify for on-chain arbitration", timeout: 7000 });
-        }
+        // Honest message: this is NOT an on-chain transaction
+        toast({
+          kind: withinWindow ? "info" : "info",
+          title: "Dispute recorded (session only)",
+          detail: "⚠ No blockchain transaction sent. On-chain dispute() is not yet deployed. This note is stored for this session only.",
+          timeout: 9000,
+        });
       }
 
       // Auto-fill dispute call ID from completed calls
@@ -5681,25 +5811,23 @@ console.log("call opened:", tx.hash);`;
       // ================================================================
       // FEATURE 2: Capability Tags
       // ================================================================
-      const providerTags = {};  // in-memory per session
-      const providerSubProviders = {};  // in-memory per session
       let activeTagFilter = "all";
 
       function saveTags(providerId, tags) {
-        providerTags[providerId] = tags;
+        state.sessionTags[providerId] = tags;
       }
 
       function saveSubProviders(providerId, subs) {
-        providerSubProviders[providerId] = subs;
+        state.sessionSubProviders[providerId] = subs;
       }
 
       function getTagsForProvider(id) {
-        return providerTags[id] || [];
+        return state.sessionTags[id] || [];
       }
 
       function getAllTags() {
         const all = new Set();
-        Object.values(providerTags).forEach(tags => tags.forEach(t => all.add(t)));
+        Object.values(state.sessionTags).forEach(tags => tags.forEach(t => all.add(t)));
         return Array.from(all).sort();
       }
 
@@ -5832,7 +5960,7 @@ console.log("call opened:", tx.hash);`;
           const body = document.querySelector(".modal-body");
           if (!body) return;
           const tags = getTagsForProvider(providerId);
-          const subs = providerSubProviders[providerId] || [];
+          const subs = state.sessionSubProviders[providerId] || [];
 
           if (tags.length > 0 || subs.length > 0) {
             const extra = document.createElement("div");
