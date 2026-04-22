@@ -3650,12 +3650,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               params: [{ eth_accounts: {} }],
             });
           } catch (permErr) {
-            // 4001 = user explicitly rejected → propagate so the outer catch shows the error
+            // 4001 = user explicitly rejected → propagate
             if (permErr.code === 4001) {
               throw permErr;
             }
-            // Any other error (4200 = not supported, -32601 = not found, or unknown)
-            // fall back gracefully to the standard accounts request.
+            // Any other error (unsupported method, etc.) → fall back gracefully
             await state.provider.send("eth_requestAccounts", []);
           }
           state.signer = await state.provider.getSigner();
@@ -4422,7 +4421,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               <div class="metric-cell">
                 <div class="metric-label">Slashed</div>
                 <div class="metric-value ${slashed > 0 ? "danger" : ""}">${slashed}</div>
-                <div class="metric-sub">${slashed > 0 ? \`<span id="modalSlashDetail" style="cursor:pointer;text-decoration:underline dotted;color:var(--danger)">view reasons ↓</span>\` : "no violations"}</div>
+                <div class="metric-sub">${slashed > 0 ? '<span id="modalSlashDetail" style="cursor:pointer;text-decoration:underline dotted;color:var(--danger)">view reasons ↓</span>' : "no violations"}</div>
               </div>
             </div>
 
