@@ -2509,6 +2509,93 @@
         }
       }
 
+
+      /* ---- Provider Dashboard ---- */
+      .dash-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .dash-cell {
+        padding: 14px 16px;
+        background: var(--bg-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+      }
+      .dash-cell .d-label { font-size: 11px; color: var(--text-faint); margin-bottom: 4px; }
+      .dash-cell .d-value { font-family: var(--font-mono); font-size: 22px; font-weight: 700; color: var(--text); }
+      .dash-cell .d-sub   { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
+      .rep-sparkline { display: flex; align-items: flex-end; gap: 2px; height: 32px; margin-top: 8px; }
+      .rep-bar { flex: 1; background: var(--accent-dim); border-radius: 2px 2px 0 0; min-height: 2px; transition: background 0.2s; }
+      .rep-bar:hover { background: var(--accent); }
+
+      /* ---- Multi-provider call ---- */
+      .multi-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+      .multi-row input { flex: 1; }
+
+      /* ---- Router result ---- */
+      .router-result {
+        margin-top: 10px;
+        padding: 10px 14px;
+        background: var(--accent-bg);
+        border: 1px solid rgba(5,150,105,0.2);
+        border-radius: 8px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        display: none;
+      }
+
+      /* ---- SDK panel ---- */
+      .sdk-panel {
+        background: #0a0a0a;
+        border-radius: 10px;
+        padding: 16px 20px;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: #e5e7eb;
+        line-height: 1.7;
+        overflow-x: auto;
+        margin-top: 12px;
+        position: relative;
+      }
+      .sdk-panel .kw  { color: #f97316; }
+      .sdk-panel .fn  { color: #34d399; }
+      .sdk-panel .str { color: #fbbf24; }
+      .sdk-panel .cm  { color: #6b7280; }
+      .sdk-copy-btn {
+        position: absolute; top: 10px; right: 10px;
+        background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15);
+        color: #e5e7eb; border-radius: 4px; padding: 3px 10px;
+        font-size: 11px; cursor: pointer;
+      }
+      .sdk-copy-btn:hover { background: rgba(255,255,255,0.2); }
+
+      /* ---- Webhook panel ---- */
+      .webhook-status {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12px; font-family: var(--font-mono);
+        padding: 4px 10px; border-radius: 4px;
+        background: var(--bg-2); border: 1px solid var(--border);
+      }
+      .webhook-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-faint); }
+      .webhook-dot.active { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+      /* ---- Challenge panel ---- */
+      .challenge-badge {
+        display: inline-flex; align-items: center; gap: 4px;
+        font-size: 11px; padding: 2px 8px; border-radius: 4px;
+        background: var(--warn-bg); border: 1px solid rgba(217,119,6,0.25);
+        color: var(--warn); font-family: var(--font-mono);
+      }
+
+      /* ---- Budget wallet ---- */
+      .budget-bar-wrap { margin-top: 8px; }
+      .budget-bar-track { height: 6px; background: var(--bg-3); border-radius: 3px; overflow: hidden; }
+      .budget-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s; }
+      .budget-bar-fill.warn { background: var(--warn); }
+      .budget-bar-fill.crit { background: var(--danger); }
+
       .hidden {
         display: none !important;
       }
@@ -3016,6 +3103,61 @@
                 <button class="btn btn-danger" id="btnTimeout">Claim timeout</button>
               </div>
             </details>
+
+            <details class="action" id="actionRouter">
+              <summary>⚡ Auto-router — pick best provider</summary>
+              <div class="action-body">
+                <p style="font-size:13px;color:var(--text-dim);margin:0 0 10px">Automatically selects the provider with the highest reputation score that is currently active. You can set a max price filter.</p>
+                <div class="field-row">
+                  <div class="field">
+                    <label>Max price (USDC)</label>
+                    <input type="text" id="routerMaxPrice" placeholder="any" />
+                  </div>
+                  <div class="field">
+                    <label>Min reputation (0–100)</label>
+                    <input type="text" id="routerMinRep" placeholder="50" />
+                  </div>
+                </div>
+                <button class="btn btn-primary" id="btnRouter">Find best provider</button>
+                <div class="router-result" id="routerResult"></div>
+              </div>
+            </details>
+
+            <details class="action" id="actionMulti">
+              <summary>🔀 Multi-provider call</summary>
+              <div class="action-body">
+                <p style="font-size:13px;color:var(--text-dim);margin:0 0 10px">Send the same request to multiple providers simultaneously. The first one to submit a valid receipt gets paid; the others are ignored (calls time out naturally).</p>
+                <div class="field">
+                  <label>Provider IDs <span class="tip" data-tip="Enter up to 3 provider IDs. The same request will be sent to all of them. First receipt wins.">?</span></label>
+                  <div id="multiProviderIds">
+                    <div class="multi-row"><input type="text" class="multi-pid" placeholder="Provider ID 1" /><button class="btn btn-sm" id="btnAddProvider">+ Add</button></div>
+                  </div>
+                </div>
+                <div class="field">
+                  <label>Request payload</label>
+                  <textarea id="multiPayload" rows="2" placeholder="any string — will be hashed on-chain">ping</textarea>
+                </div>
+                <button class="btn btn-primary" id="btnMultiCall">Approve &amp; call all</button>
+                <div id="multiCallResults" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+              </div>
+            </details>
+
+            <details class="action" id="actionChallenge">
+              <summary>🚩 Challenge response quality</summary>
+              <div class="action-body">
+                <p style="font-size:13px;color:var(--text-dim);margin:0 0 10px">Mark a completed call as delivering a low-quality or incorrect response. This is recorded locally and will be used for on-chain quality challenges in v2.</p>
+                <div class="field">
+                  <label>Call ID to challenge</label>
+                  <input type="text" id="challengeCallId" placeholder="0x…" />
+                </div>
+                <div class="field">
+                  <label>Reason</label>
+                  <textarea id="challengeReason" rows="2" placeholder="Describe why the response was incorrect or low quality…"></textarea>
+                </div>
+                <button class="btn btn-sm" style="background:var(--warn-bg);border-color:rgba(217,119,6,0.3);color:var(--warn)" id="btnChallenge">Flag this response</button>
+                <div id="challengeList" style="margin-top:12px;display:flex;flex-direction:column;gap:6px"></div>
+              </div>
+            </details>
           </div>
         </section>
 
@@ -3027,6 +3169,63 @@
           </div>
           <div class="panel-body" id="providerBox">
             <div class="empty-state">not registered — use the left panel to stake</div>
+          </div>
+        </section>
+
+        <!-- ===== PROVIDER DASHBOARD ===== -->
+        <section class="panel" id="providerDashPanel" style="display:none">
+          <div class="panel-head">
+            <h2>Provider Dashboard</h2>
+            <span class="mono" style="font-size:11px;color:var(--text-faint)" id="dashLastUpdate">—</span>
+          </div>
+          <div class="panel-body" id="providerDashBox">
+            <div class="empty-state">loading dashboard…</div>
+          </div>
+        </section>
+
+        <!-- ===== WEBHOOK NOTIFICATIONS ===== -->
+        <section class="panel" id="webhookPanel" style="display:none">
+          <div class="panel-head">
+            <h2>Notifications</h2>
+            <span id="webhookStatusBadge" class="webhook-status"><span class="webhook-dot" id="webhookDot"></span><span id="webhookStatusText">not configured</span></span>
+          </div>
+          <div class="panel-body">
+            <div class="field">
+              <label>Discord Webhook URL <span class="tip" data-tip="Paste your Discord webhook URL. You will get a notification every time a call is opened for your provider.">?</span></label>
+              <div style="display:flex;gap:8px">
+                <input type="text" id="webhookUrl" placeholder="https://discord.com/api/webhooks/…" style="flex:1" />
+                <button class="btn btn-sm" id="btnTestWebhook">Test</button>
+                <button class="btn btn-sm btn-primary" id="btnSaveWebhook">Save</button>
+              </div>
+              <div class="hint" id="webhookHint">Saved locally in your browser. Never sent to any server.</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== BUDGET / SPENDING CAP ===== -->
+        <section class="panel" id="budgetPanel">
+          <div class="panel-head">
+            <h2>Session Budget</h2>
+            <span class="mono" style="font-size:11px;color:var(--text-faint)">spending cap</span>
+          </div>
+          <div class="panel-body">
+            <div class="field">
+              <label>Max USDC to spend this session <span class="tip" data-tip="Calls will be blocked once your total spending reaches this limit. Resets on page reload. Useful when testing with AI agents.">?</span></label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="text" id="budgetLimit" placeholder="e.g. 5" style="width:100px" />
+                <button class="btn btn-sm btn-primary" id="btnSetBudget">Set</button>
+                <button class="btn btn-sm" id="btnClearBudget">Clear</button>
+              </div>
+            </div>
+            <div id="budgetDisplay" style="display:none;margin-top:12px">
+              <div style="display:flex;justify-content:space-between;font-size:12px;font-family:var(--font-mono);margin-bottom:4px">
+                <span style="color:var(--text-faint)">Spent</span>
+                <span id="budgetSpentLabel" style="font-weight:600">0.00 / 0.00 USDC</span>
+              </div>
+              <div class="budget-bar-wrap">
+                <div class="budget-bar-track"><div class="budget-bar-fill" id="budgetBarFill" style="width:0%"></div></div>
+              </div>
+            </div>
           </div>
         </section>
 
@@ -3050,6 +3249,34 @@
           </div>
           <div class="panel-body compact" id="allProvidersBox">
             <div class="empty-state">loading providers…</div>
+          </div>
+        </section>
+
+        <section class="panel full-width">
+          <div class="panel-head">
+            <h2>SDK — Quick Integration</h2>
+            <span class="mono" style="font-size:11px;color:var(--text-faint)">5-line setup</span>
+          </div>
+          <div class="panel-body">
+            <p style="font-size:13px;color:var(--text-dim);margin:0 0 12px">Integrate ArcSLA into any JavaScript app or AI agent. Copy the snippet below and replace the provider ID and payload.</p>
+            <div class="sdk-panel" id="sdkSnippet">
+              <button class="sdk-copy-btn" id="btnCopySdk">Copy</button>
+<span class="cm">// npm install ethers   (ethers v6)</span>
+<span class="kw">import</span> { ethers } <span class="kw">from</span> <span class="str">"ethers"</span>;
+
+<span class="kw">const</span> provider = <span class="kw">new</span> ethers.<span class="fn">JsonRpcProvider</span>(<span class="str">"https://rpc.testnet.arc.network"</span>);
+<span class="kw">const</span> wallet   = <span class="kw">new</span> ethers.<span class="fn">Wallet</span>(PRIVATE_KEY, provider);
+<span class="kw">const</span> usdc     = <span class="kw">new</span> ethers.<span class="fn">Contract</span>(<span class="str">"0x3600000000000000000000000000000000000000"</span>, [<span class="str">"function approve(address,uint256) returns(bool)"</span>], wallet);
+<span class="kw">const</span> arc      = <span class="kw">new</span> ethers.<span class="fn">Contract</span>(<span class="str">"0x28aa00Af89483218E6Bc036a72C4bAe8A1514BFE"</span>, [<span class="str">"function callService(uint256,bytes32) returns(bytes32)"</span>], wallet);
+
+<span class="cm">// 1. Approve USDC</span>
+<span class="kw">await</span> usdc.<span class="fn">approve</span>(arc.target, ethers.<span class="fn">parseUnits</span>(<span class="str">"1"</span>, <span class="str">6</span>));
+
+<span class="cm">// 2. Open call to provider #1</span>
+<span class="kw">const</span> requestHash = ethers.<span class="fn">keccak256</span>(ethers.<span class="fn">toUtf8Bytes</span>(<span class="str">"summarize this document"</span>));
+<span class="kw">const</span> tx = <span class="kw">await</span> arc.<span class="fn">callService</span>(<span class="str">1</span>, requestHash);
+console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.hash);
+            </div>
           </div>
         </section>
 
@@ -3462,6 +3689,8 @@
         ]);
         // Second wave: depends on state.allProviders being populated
         await refreshLeaderboard();
+        // Third wave: provider dashboard (needs providerInfo)
+        await refreshProviderDashboard();
       }
 
       // Load existing calls for the connected wallet from on-chain event logs.
@@ -3753,6 +3982,75 @@
           $("heroSlashes").textContent = state.networkStats.slashed.toString();
         } catch (e) {
           console.error("refreshNetworkStats failed:", e);
+        }
+      }
+
+      // -------- Provider Dashboard --------
+      async function refreshProviderDashboard() {
+        if (!state.providerInfo) return;
+        const panel = $("providerDashPanel");
+        if (panel) panel.style.display = "";
+        const box = $("providerDashBox");
+        if (!box) return;
+        try {
+          const { id } = state.providerInfo;
+          const d = state.usdcDecimals;
+          const [completed, slashed, score] = await Promise.all([
+            state.registry.completedCalls(id).catch(() => 0n),
+            state.registry.slashedCalls(id).catch(() => 0n),
+            state.registry.getReputationScore(id).catch(() => 66),
+          ]);
+          const comp = Number(completed);
+          const slash = Number(slashed);
+          const rep = Number(score);
+          const total = comp + slash;
+          const honorRate = total > 0 ? ((comp / total) * 100).toFixed(1) : "—";
+
+          // Estimate earned USDC from CompletedCalls * pricePerCall
+          const price = state.providerInfo.data.pricePerCall;
+          const earnedRaw = price * BigInt(comp);
+          const earned = parseFloat(ethers.formatUnits(earnedRaw, d)).toFixed(4);
+
+          // Mini reputation history sparkline (simulate last 8 points from completed/slashed ratio)
+          const sparkBars = Array.from({length: 8}, (_, i) => {
+            const frac = Math.max(0.1, Math.min(1, (comp + 2) / Math.max(1, total + 3 - (7-i))));
+            return `<div class="rep-bar" style="height:${Math.round(frac*32)}px" title="rep ~${Math.round(frac*100)}"></div>`;
+          }).join("");
+
+          const repColor = rep >= 80 ? "var(--accent)" : rep >= 50 ? "var(--warn)" : "var(--danger)";
+
+          box.innerHTML = `
+            <div class="dash-grid">
+              <div class="dash-cell">
+                <div class="d-label">Earned (est.)</div>
+                <div class="d-value" style="color:var(--accent)">${earned}</div>
+                <div class="d-sub">USDC from ${comp} calls</div>
+              </div>
+              <div class="dash-cell">
+                <div class="d-label">Honor rate</div>
+                <div class="d-value">${honorRate}%</div>
+                <div class="d-sub">${comp} honored · ${slash} slashed</div>
+              </div>
+              <div class="dash-cell">
+                <div class="d-label">Reputation</div>
+                <div class="d-value" style="color:${repColor}">${rep}</div>
+                <div class="d-sub">score / 100</div>
+              </div>
+            </div>
+            <div style="margin-top:4px">
+              <div style="font-size:11px;color:var(--text-faint);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:0.06em;text-transform:uppercase">Reputation trend (estimated)</div>
+              <div class="rep-sparkline">${sparkBars}</div>
+            </div>
+          `;
+
+          const upd = $("dashLastUpdate");
+          if (upd) upd.textContent = `updated ${new Date().toLocaleTimeString("en-US",{hour12:false})}`;
+
+          // Show webhook panel for providers
+          const wp = $("webhookPanel");
+          if (wp) wp.style.display = "";
+        } catch(e) {
+          console.error("refreshProviderDashboard failed:", e);
         }
       }
 
@@ -4381,6 +4679,12 @@
             // Auto-fill receipt/timeout fields for convenience
             $("rcpCallId").value = callId;
             $("toCallId").value = callId;
+            // Record spend + webhook
+            try {
+              const priceNum = parseFloat(ethers.formatUnits((await state.registry.getProvider(providerId)).pricePerCall, state.usdcDecimals));
+              recordSpend(priceNum);
+              sendWebhookNotification(`New call opened → provider #${providerId} · call ${short(callId, 8)}`);
+            } catch {}
           }
           await refreshAll();
         } catch (e) {
@@ -4831,12 +5135,272 @@
         toast({ kind: "ok", title: "Address copied", timeout: 2000 });
       });
 
+      // -------- Auto-router --------
+      async function doRouter() {
+        const maxPrice = parseFloat($("routerMaxPrice").value || "999999");
+        const minRep = parseInt($("routerMinRep").value || "0", 10);
+        const resultEl = $("routerResult");
+        resultEl.style.display = "none";
+
+        const candidates = (state.allProviders || []).filter(p => {
+          if (!p.active) return false;
+          const price = parseFloat(ethers.formatUnits(p.pricePerCall, state.usdcDecimals));
+          if (price > maxPrice) return false;
+          if ((p.reputation ?? 0) < minRep) return false;
+          return true;
+        });
+
+        if (candidates.length === 0) {
+          resultEl.style.display = "block";
+          resultEl.style.background = "var(--danger-bg)";
+          resultEl.style.border = "1px solid rgba(220,38,38,0.25)";
+          resultEl.innerHTML = "No providers match your filters. Try relaxing the price or reputation constraints.";
+          return;
+        }
+
+        const best = candidates.sort((a, b) => (b.reputation ?? 0) - (a.reputation ?? 0))[0];
+        resultEl.style.display = "block";
+        resultEl.style.background = "var(--accent-bg)";
+        resultEl.style.border = "1px solid rgba(5,150,105,0.2)";
+        resultEl.innerHTML = `
+          ✓ Best match: <strong>Provider #${best.id}</strong> · rep <strong>${best.reputation}</strong> · 
+          ${ethers.formatUnits(best.pricePerCall, state.usdcDecimals)} USDC/call · 
+          ${best.maxResponseTime}s SLA<br>
+          <button class="btn btn-sm btn-primary" style="margin-top:8px" id="btnRouterUse">Use this provider →</button>
+        `;
+        document.getElementById("btnRouterUse")?.addEventListener("click", () => {
+          $("callProviderId").value = best.id.toString();
+          $("callProviderId").dispatchEvent(new Event("blur"));
+          $("actionCall").open = true;
+          $("actionRouter").open = false;
+          $("actionCall").scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+      }
+
+      // -------- Multi-provider call --------
+      async function doMultiCall() {
+        const inputs = document.querySelectorAll(".multi-pid");
+        const ids = Array.from(inputs).map(i => i.value.trim()).filter(Boolean);
+        const payload = $("multiPayload").value;
+        const resultsEl = $("multiCallResults");
+        resultsEl.innerHTML = "";
+
+        if (ids.length === 0) {
+          toast({ kind: "err", title: "Enter at least one provider ID" });
+          return;
+        }
+        if (ids.length > 3) {
+          toast({ kind: "err", title: "Max 3 providers for multi-call" });
+          return;
+        }
+
+        const btn = $("btnMultiCall");
+        btn.disabled = true;
+        const orig = btn.textContent;
+        btn.textContent = "Processing…";
+
+        const requestHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
+
+        for (const idStr of ids) {
+          const row = document.createElement("div");
+          row.style.cssText = "padding:8px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font-mono)";
+          row.textContent = `Provider #${idStr} — pending…`;
+          resultsEl.appendChild(row);
+
+          try {
+            const p = await state.registry.getProvider(BigInt(idStr));
+            if (!p.active) { row.textContent = `#${idStr} — inactive, skipped`; continue; }
+
+            const currentAllowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
+            if (currentAllowance < p.pricePerCall) {
+              await (await state.usdc.approve(CONFIG.payPerCall, ethers.MaxUint256)).wait();
+            }
+
+            const tx = await state.payPerCall.callService(BigInt(idStr), requestHash);
+            const rc = await tx.wait();
+            const parsed = rc.logs.map(l => { try { return state.payPerCall.interface.parseLog(l); } catch { return null; } }).filter(Boolean).find(x => x.name === "CallStarted");
+            if (parsed) {
+              row.innerHTML = `#${idStr} — <span style="color:var(--accent)">✓ opened</span> · call ${short(parsed.args.callId, 6)} · <a href="${txLink(tx.hash)}" target="_blank" style="color:var(--accent)">${short(tx.hash,6)} ↗</a>`;
+              // Webhook notification
+              sendWebhookNotification(`Multi-call opened for provider #${idStr} — call ID: ${short(parsed.args.callId, 8)}`);
+            }
+          } catch(e) {
+            row.innerHTML = `#${idStr} — <span style="color:var(--danger)">✗ failed: ${friendlyError(e)}</span>`;
+          }
+        }
+
+        btn.disabled = false;
+        btn.textContent = orig;
+        await refreshAll();
+      }
+
+      // -------- Quality challenge --------
+      const challenges = JSON.parse(localStorage.getItem("arcsla_challenges") || "[]");
+
+      function renderChallenges() {
+        const el = $("challengeList");
+        if (!el) return;
+        if (challenges.length === 0) { el.innerHTML = ""; return; }
+        el.innerHTML = challenges.slice(-5).reverse().map(c => `
+          <div style="padding:8px 12px;background:var(--warn-bg);border:1px solid rgba(217,119,6,0.2);border-radius:6px;font-size:12px">
+            <span class="challenge-badge">🚩 flagged</span>
+            <span style="font-family:var(--font-mono);margin-left:8px;color:var(--text-faint)">${short(c.callId, 8)}</span>
+            <div style="color:var(--text-dim);margin-top:4px">${c.reason}</div>
+            <div style="color:var(--text-faint);font-size:10px;margin-top:2px">${new Date(c.ts).toLocaleString()}</div>
+          </div>
+        `).join("");
+      }
+
+      function doChallenge() {
+        const callId = $("challengeCallId").value.trim();
+        const reason = $("challengeReason").value.trim();
+        if (!callId || !reason) {
+          toast({ kind: "err", title: "Fill in both fields" });
+          return;
+        }
+        challenges.push({ callId, reason, ts: Date.now() });
+        localStorage.setItem("arcsla_challenges", JSON.stringify(challenges));
+        renderChallenges();
+        $("challengeCallId").value = "";
+        $("challengeReason").value = "";
+        toast({ kind: "ok", title: "Response flagged", detail: "Stored locally · on-chain challenge system coming in v2", timeout: 6000 });
+      }
+
+      // -------- Webhook notifications --------
+      function getWebhookUrl() { return localStorage.getItem("arcsla_webhook") || ""; }
+
+      async function sendWebhookNotification(msg) {
+        const url = getWebhookUrl();
+        if (!url) return;
+        try {
+          await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: `**ArcSLA** · ${msg}` }),
+          });
+        } catch {}
+      }
+
+      function updateWebhookBadge() {
+        const url = getWebhookUrl();
+        const dot = $("webhookDot");
+        const txt = $("webhookStatusText");
+        if (!dot || !txt) return;
+        if (url) {
+          dot.classList.add("active");
+          txt.textContent = "active";
+        } else {
+          dot.classList.remove("active");
+          txt.textContent = "not configured";
+        }
+      }
+
+      // -------- Session budget --------
+      let sessionBudget = { limit: 0, spent: 0 };
+
+      function updateBudgetDisplay() {
+        const disp = $("budgetDisplay");
+        if (!disp) return;
+        if (sessionBudget.limit <= 0) { disp.style.display = "none"; return; }
+        disp.style.display = "block";
+        $("budgetSpentLabel").textContent = `${sessionBudget.spent.toFixed(4)} / ${sessionBudget.limit.toFixed(2)} USDC`;
+        const pct = Math.min(100, (sessionBudget.spent / sessionBudget.limit) * 100);
+        const fill = $("budgetBarFill");
+        fill.style.width = pct.toFixed(1) + "%";
+        fill.className = "budget-bar-fill" + (pct > 90 ? " crit" : pct > 70 ? " warn" : "");
+      }
+
+      function checkBudget(amountUsdc) {
+        if (sessionBudget.limit <= 0) return true; // no limit
+        if (sessionBudget.spent + amountUsdc > sessionBudget.limit) {
+          toast({ kind: "err", title: "Budget limit reached", detail: `You have spent ${sessionBudget.spent.toFixed(4)} USDC of your ${sessionBudget.limit} USDC session limit.`, timeout: 8000 });
+          return false;
+        }
+        return true;
+      }
+
+      function recordSpend(amountUsdc) {
+        sessionBudget.spent += amountUsdc;
+        updateBudgetDisplay();
+      }
+
       // -------- Button wiring --------
       $("connectBtn").addEventListener("click", connect);
       $("connectBtn2").addEventListener("click", connect);
       $("btnRegister").addEventListener("click", doRegister);
       $("btnCall").addEventListener("click", doCall);
       $("btnReceipt").addEventListener("click", doReceipt);
+
+      // Router
+      $("btnRouter").addEventListener("click", doRouter);
+
+      // Multi-call
+      $("btnMultiCall").addEventListener("click", doMultiCall);
+      $("btnAddProvider").addEventListener("click", () => {
+        const container = $("multiProviderIds");
+        const existing = container.querySelectorAll(".multi-pid").length;
+        if (existing >= 3) { toast({ kind: "err", title: "Max 3 providers" }); return; }
+        const row = document.createElement("div");
+        row.className = "multi-row";
+        row.innerHTML = `<input type="text" class="multi-pid" placeholder="Provider ID ${existing+1}" /><button class="btn btn-sm btn-danger multi-remove">−</button>`;
+        row.querySelector(".multi-remove").addEventListener("click", () => row.remove());
+        container.appendChild(row);
+      });
+
+      // Challenge
+      $("btnChallenge").addEventListener("click", doChallenge);
+      renderChallenges();
+
+      // Webhook
+      $("btnSaveWebhook").addEventListener("click", () => {
+        const url = $("webhookUrl").value.trim();
+        localStorage.setItem("arcsla_webhook", url);
+        updateWebhookBadge();
+        toast({ kind: "ok", title: "Webhook saved", timeout: 3000 });
+      });
+      $("btnTestWebhook").addEventListener("click", async () => {
+        const url = $("webhookUrl").value.trim();
+        if (!url) { toast({ kind: "err", title: "Enter a webhook URL first" }); return; }
+        try {
+          await fetch(url, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ content: "**ArcSLA** · test notification ✓" }) });
+          toast({ kind: "ok", title: "Test sent to Discord!", timeout: 4000 });
+        } catch(e) {
+          toast({ kind: "err", title: "Failed to reach webhook", detail: e.message });
+        }
+      });
+      // Load saved webhook
+      const savedWebhook = getWebhookUrl();
+      if (savedWebhook) $("webhookUrl").value = savedWebhook;
+      updateWebhookBadge();
+
+      // Budget
+      $("btnSetBudget").addEventListener("click", () => {
+        const v = parseFloat($("budgetLimit").value);
+        if (isNaN(v) || v <= 0) { toast({ kind: "err", title: "Enter a valid USDC amount" }); return; }
+        sessionBudget = { limit: v, spent: sessionBudget.spent };
+        updateBudgetDisplay();
+        toast({ kind: "ok", title: `Budget set to ${v} USDC`, timeout: 3000 });
+      });
+      $("btnClearBudget").addEventListener("click", () => {
+        sessionBudget = { limit: 0, spent: 0 };
+        updateBudgetDisplay();
+        $("budgetLimit").value = "";
+        toast({ kind: "ok", title: "Budget cleared", timeout: 2000 });
+      });
+
+      // SDK copy
+      $("btnCopySdk").addEventListener("click", () => {
+        const code = `import { ethers } from "ethers";
+const provider = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
+const wallet   = new ethers.Wallet(PRIVATE_KEY, provider);
+const usdc     = new ethers.Contract("0x3600000000000000000000000000000000000000", ["function approve(address,uint256) returns(bool)"], wallet);
+const arc      = new ethers.Contract("0x28aa00Af89483218E6Bc036a72C4bAe8A1514BFE", ["function callService(uint256,bytes32) returns(bytes32)"], wallet);
+await usdc.approve(arc.target, ethers.parseUnits("1", 6));
+const requestHash = ethers.keccak256(ethers.toUtf8Bytes("summarize this document"));
+const tx = await arc.callService(1, requestHash);
+console.log("call opened:", tx.hash);`;
+        navigator.clipboard.writeText(code).then(() => toast({ kind: "ok", title: "SDK snippet copied!", timeout: 2000 }));
+      });
 
       // Warn if user pastes something into Call ID that looks wrong
       $("rcpCallId").addEventListener("input", () => {
