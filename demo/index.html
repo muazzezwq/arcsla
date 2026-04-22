@@ -2994,11 +2994,11 @@
                 <div class="field-row">
                   <div class="field">
                     <label>Max response (sec) <span class="tip" data-tip="How long you have between a call opening and submitting a signed receipt. Miss this deadline and anyone can claim a timeout against you.">?</span></label>
-                    <input type="text" id="regMaxResp" placeholder="30" />
+                    <input type="text" id="regMaxResp" placeholder="120" />
                   </div>
                   <div class="field">
                     <label>Slash % <span class="tip" data-tip="Percentage of your stake paid to the caller on a timeout. Higher values build trust but raise your risk. 10–30% is typical.">?</span></label>
-                    <input type="text" id="regSlashPct" placeholder="20" />
+                    <input type="text" id="regSlashPct" placeholder="10" />
                   </div>
                 </div>
                 <div class="field">
@@ -4448,8 +4448,8 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         const signerAddr = $("regSigner").value.trim() || state.address;
         const stake = $("regStake").value.trim();
         const price = $("regPrice").value.trim();
-        const maxResp = parseInt($("regMaxResp").value.trim(), 10);
-        const slashPct = parseFloat($("regSlashPct").value.trim());
+        const maxResp = parseInt($("regMaxResp").value.trim() || "120", 10);
+        const slashPct = parseFloat($("regSlashPct").value.trim() || "10");
         const endpoint = $("regEndpoint").value.trim();
 
         if (!stake || !price || isNaN(maxResp) || isNaN(slashPct)) {
@@ -4721,6 +4721,34 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               timeout: 10000,
             });
             return;
+          }
+        }
+
+        // ⚠️ Check SLA time remaining before opening MetaMask
+        const callObj = Array.from(state.myCalls.values()).find(c => c.callId === callId);
+        if (callObj && callObj.deadline) {
+          const secsRemaining = Math.round(callObj.deadline - Date.now() / 1000);
+          if (secsRemaining <= 0) {
+            toast({
+              kind: "err",
+              title: "SLA deadline already passed",
+              detail: "This call has expired. Use 'Claim timeout' to get a refund.",
+              timeout: 8000,
+            });
+            return;
+          }
+          if (secsRemaining <= 20) {
+            toast({
+              kind: "err",
+              title: `🚨 Only ${secsRemaining}s left — too risky`,
+              detail: "MetaMask needs ~10s to confirm. There is not enough time to safely submit this receipt.",
+              timeout: 8000,
+            });
+            return;
+          }
+          if (secsRemaining <= 45) {
+            const go = window.confirm(`⚠️ Only ${secsRemaining}s left on the SLA deadline.\n\nMetaMask needs ~10s to sign + confirm. This is tight — proceed only if you are quick.\n\nContinue?`);
+            if (!go) return;
           }
         }
 
@@ -5197,36 +5225,72 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         const btn = $("btnMultiCall");
         btn.disabled = true;
         const orig = btn.textContent;
-        btn.textContent = "Processing…";
 
         const requestHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
 
-        for (const idStr of ids) {
-          const row = document.createElement("div");
-          row.style.cssText = "padding:8px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font-mono)";
-          row.textContent = `Provider #${idStr} — pending…`;
-          resultsEl.appendChild(row);
-
-          try {
-            const p = await state.registry.getProvider(BigInt(idStr));
-            if (!p.active) { row.textContent = `#${idStr} — inactive, skipped`; continue; }
-
-            const currentAllowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
-            if (currentAllowance < p.pricePerCall) {
-              await (await state.usdc.approve(CONFIG.payPerCall, ethers.MaxUint256)).wait();
-            }
-
-            const tx = await state.payPerCall.callService(BigInt(idStr), requestHash);
-            const rc = await tx.wait();
-            const parsed = rc.logs.map(l => { try { return state.payPerCall.interface.parseLog(l); } catch { return null; } }).filter(Boolean).find(x => x.name === "CallStarted");
-            if (parsed) {
-              row.innerHTML = `#${idStr} — <span style="color:var(--accent)">✓ opened</span> · call ${short(parsed.args.callId, 6)} · <a href="${txLink(tx.hash)}" target="_blank" style="color:var(--accent)">${short(tx.hash,6)} ↗</a>`;
-              // Webhook notification
-              sendWebhookNotification(`Multi-call opened for provider #${idStr} — call ID: ${short(parsed.args.callId, 8)}`);
-            }
-          } catch(e) {
-            row.innerHTML = `#${idStr} — <span style="color:var(--danger)">✗ failed: ${friendlyError(e)}</span>`;
+        // ✅ Pre-check: approve USDC once for all calls before any MetaMask signing
+        try {
+          btn.textContent = "Checking allowance…";
+          // Fetch all prices first
+          const providerData = [];
+          for (const idStr of ids) {
+            try {
+              const p = await state.registry.getProvider(BigInt(idStr));
+              providerData.push({ idStr, p });
+            } catch { providerData.push({ idStr, p: null }); }
           }
+
+          // Total needed
+          const totalNeeded = providerData.reduce((acc, { p }) => p && p.active ? acc + p.pricePerCall : acc, 0n);
+          if (totalNeeded > 0n) {
+            const allowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
+            if (allowance < totalNeeded) {
+              btn.textContent = "Approve USDC (1/1)…";
+              toast({ kind: "info", title: "Approving USDC for all calls…", detail: "<span class='spinner'></span> one approval for all providers", timeout: 0 });
+              const txA = await state.usdc.approve(CONFIG.payPerCall, ethers.MaxUint256);
+              await txA.wait();
+              // Remove approval toast
+              document.querySelectorAll(".toast.info").forEach(t => t.remove());
+              toast({ kind: "ok", title: "USDC approved", timeout: 3000 });
+            }
+          }
+
+          // ✅ Now call providers ONE BY ONE (sequential, not parallel)
+          // This way MetaMask shows one popup at a time
+          for (let i = 0; i < providerData.length; i++) {
+            const { idStr, p } = providerData[i];
+
+            const row = document.createElement("div");
+            row.style.cssText = "padding:8px 12px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:var(--font-mono)";
+            row.textContent = `Provider #${idStr} — waiting…`;
+            resultsEl.appendChild(row);
+
+            if (!p || !p.active) {
+              row.textContent = `#${idStr} — inactive, skipped`;
+              continue;
+            }
+
+            btn.textContent = `Opening call ${i + 1} of ${providerData.length}… (confirm in MetaMask)`;
+
+            try {
+              // ✅ await each tx fully before moving to the next
+              const tx = await state.payPerCall.callService(BigInt(idStr), requestHash);
+              row.textContent = `#${idStr} — confirming…`;
+              const rc = await tx.wait();
+              const parsed = rc.logs
+                .map(l => { try { return state.payPerCall.interface.parseLog(l); } catch { return null; } })
+                .filter(Boolean)
+                .find(x => x.name === "CallStarted");
+              if (parsed) {
+                row.innerHTML = `#${idStr} — <span style="color:var(--accent)">✓ opened</span> · call ${short(parsed.args.callId, 6)} · <a href="${txLink(tx.hash)}" target="_blank" style="color:var(--accent)">${short(tx.hash, 6)} ↗</a>`;
+                sendWebhookNotification(`Multi-call opened for provider #${idStr} — call ID: ${short(parsed.args.callId, 8)}`);
+              }
+            } catch(e) {
+              row.innerHTML = `#${idStr} — <span style="color:var(--danger)">✗ ${friendlyError(e)}</span>`;
+            }
+          }
+        } catch(e) {
+          toast({ kind: "err", title: "Multi-call failed", detail: friendlyError(e) });
         }
 
         btn.disabled = false;
