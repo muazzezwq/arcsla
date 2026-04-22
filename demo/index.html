@@ -3884,6 +3884,16 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           state.providerInfo = { id, data, endpoint, pending };
           renderProvider();
 
+          // Save pending tags captured before registration
+          if (window._pendingTags) {
+            saveTags(id, window._pendingTags);
+            saveSubProviders(id, window._pendingSubProviders || []);
+            window._pendingTags = null;
+            window._pendingSubProviders = null;
+            renderTagFilter();
+          }
+          maybeShowUpdatePrice();
+
           // Disable register button once registered — one provider per address
           if (regBtn) {
             regBtn.disabled = true;
@@ -5921,19 +5931,6 @@ console.log("call opened:", tx.hash);`;
         }
       }, true); // capture phase so it runs before doRegister
 
-      // Patch refreshProvider to save tags after registration
-      const _origRefreshProvider = refreshProvider;
-      async function refreshProvider() {
-        await _origRefreshProvider();
-        if (state.providerInfo && window._pendingTags) {
-          saveTags(state.providerInfo.id, window._pendingTags);
-          saveSubProviders(state.providerInfo.id, window._pendingSubProviders || []);
-          window._pendingTags = null;
-          window._pendingSubProviders = null;
-          renderTagFilter();
-        }
-        maybeShowUpdatePrice();
-      }
 
       // Override renderAllProviders globally to use filtered version
       function renderAllProviders() {
