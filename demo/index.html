@@ -3650,12 +3650,12 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               params: [{ eth_accounts: {} }],
             });
           } catch (permErr) {
-            // 4001 = user explicitly rejected → propagate
-            if (permErr.code === 4001) {
-              throw permErr;
+            // 4200 = method not supported, -32601 = method not found
+            if (permErr.code === 4200 || permErr.code === -32601) {
+              await state.provider.send("eth_requestAccounts", []);
+            } else {
+              throw permErr; // user rejected or other real error
             }
-            // Any other error (unsupported method, etc.) → fall back gracefully
-            await state.provider.send("eth_requestAccounts", []);
           }
           state.signer = await state.provider.getSigner();
           state.address = await state.signer.getAddress();
@@ -3703,7 +3703,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                   chainId: CONFIG.chainIdHex,
                   chainName: CONFIG.chainName,
                   rpcUrls: [CONFIG.rpcUrl],
-                  nativeCurrency: { name: "USDC", symbol: CONFIG.nativeSymbol, decimals: 6 },
+                  nativeCurrency: { name: "USDC", symbol: CONFIG.nativeSymbol, decimals: 18 },
                   blockExplorerUrls: [CONFIG.explorerBase],
                 },
               ],
@@ -3852,6 +3852,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       async function refreshProvider() {
+        if (window._patchedRefreshProvider) { return window._patchedRefreshProvider(); }
         try {
           const id = Number(await state.registry.providerIdOf(state.address));
           const regBtn = $("btnRegister");
@@ -3883,16 +3884,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           const pending = Number(await state.registry.pendingCalls(id));
           state.providerInfo = { id, data, endpoint, pending };
           renderProvider();
-
-          // Save pending tags captured before registration
-          if (window._pendingTags) {
-            saveTags(id, window._pendingTags);
-            saveSubProviders(id, window._pendingSubProviders || []);
-            window._pendingTags = null;
-            window._pendingSubProviders = null;
-            renderTagFilter();
-          }
-          maybeShowUpdatePrice();
 
           // Disable register button once registered — one provider per address
           if (regBtn) {
@@ -3996,6 +3987,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       function renderAllProviders() {
+        if (window._patchedRenderAllProviders) { return window._patchedRenderAllProviders(); }
         const d = state.usdcDecimals;
         const myAddr = state.address?.toLowerCase();
         const rows = state.allProviders
@@ -4311,6 +4303,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       // -------- Provider detail modal --------
       async function openProviderModal(providerId) {
+        if (window._patchedOpenProviderModal) { return window._patchedOpenProviderModal(providerId); }
         const root = $("modalRoot");
         root.innerHTML = `
           <div class="modal-backdrop" id="modalBackdrop">
@@ -5915,8 +5908,6 @@ console.log("call opened:", tx.hash);`;
       // FEATURE 2+5: Patch renderAllProviders to use filtered version
       // ================================================================
       // Override the original renderAllProviders
-      const _origRenderAllProviders = renderAllProviders;
-      // renderAllProviders is now overridden globally below
 
       // ================================================================
       // Wire: save tags when registration happens
@@ -5931,19 +5922,40 @@ console.log("call opened:", tx.hash);`;
         }
       }, true); // capture phase so it runs before doRegister
 
+      // Patch refreshProvider — wrap original to also save tags after registration
+      const _origRefreshProvider = refreshProvider;
+      const _origOpenProviderModal = openProviderModal;
 
-      // Override renderAllProviders globally to use filtered version
-      function renderAllProviders() {
+      // These overrides use window properties so JS hoisting doesn't cause issues
+      window._patchedRefreshProvider = async function() {
+        const patch = window._patchedRefreshProvider;
+        window._patchedRefreshProvider = null;
+        await refreshProvider();
+        window._patchedRefreshProvider = patch;
+        if (state.providerInfo && window._pendingTags) {
+          saveTags(state.providerInfo.id, window._pendingTags);
+          saveSubProviders(state.providerInfo.id, window._pendingSubProviders || []);
+          window._pendingTags = null;
+          window._pendingSubProviders = null;
+          renderTagFilter();
+        }
+        maybeShowUpdatePrice();
+      };
+
+      window._patchedRenderAllProviders = function() {
         renderTagFilter();
         renderAllProvidersFiltered();
-      }
+      };
 
       // ================================================================
       // FEATURE 4+5: Enhance provider modal with tags + sub-providers
       // ================================================================
-      const _origOpenProviderModal = openProviderModal;
-      async function openProviderModal(providerId) {
-        await _origOpenProviderModal(providerId);
+      window._patchedOpenProviderModal = async function(providerId) {
+        // Temporarily disable patch to avoid infinite recursion
+        const patch = window._patchedOpenProviderModal;
+        window._patchedOpenProviderModal = null;
+        await openProviderModal(providerId);
+        window._patchedOpenProviderModal = patch;
         // After modal renders, inject tags and sub-provider chain
         setTimeout(() => {
           const body = document.querySelector(".modal-body");
