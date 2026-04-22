@@ -3218,7 +3218,7 @@
                   <input type="text" id="updatePriceVal" placeholder="e.g. 0.5" />
                   <div class="hint" id="updatePriceHint">Current price: loading…</div>
                 </div>
-                <button class="btn btn-primary" id="btnUpdatePrice">Update price</button>
+                <button class="btn btn-primary" id="btnUpdatePrice">Save price intent (local only)</button>
               </div>
             </details>
 
@@ -3863,6 +3863,8 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         $("netLabel").textContent = CONFIG.chainName;
         $("netDot").classList.add("ok");
         startLiveClock();
+        updateBudgetDisplay();
+        updateWebhookBadge();
       }
 
       // Ticking clock — updates every second while connected
@@ -3981,8 +3983,20 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               deadline: deadlineNum,
               startedAt,
               totalSec,
-              status: Number(status), // always number, never BigInt
+              status: Number(status),
             });
+          }
+
+          // Also update status on ALREADY-TRACKED calls that may have changed
+          // (e.g. page reloaded after a receipt was submitted)
+          for (const l of startedLogs) {
+            const callId = l.args.callId;
+            const existing = state.myCalls.get(callId);
+            if (!existing) continue; // was just added above
+            const newStatus = receiptSet.has(callId) ? 2 : slashedSet.has(callId) ? 3 : 1;
+            if (existing.status !== newStatus) {
+              existing.status = newStatus;
+            }
           }
 
           if (state.myCalls.size > 0) {
@@ -5080,17 +5094,17 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             });
             return;
           }
-          if (secsRemaining <= 20) {
+          if (secsRemaining <= 8) {
             toast({
               kind: "err",
-              title: `🚨 Only ${secsRemaining}s left — too risky`,
-              detail: "MetaMask needs ~10s to confirm. There is not enough time to safely submit this receipt.",
+              title: `🚨 Only ${secsRemaining}s left — deadline too close`,
+              detail: "Not enough time to sign and confirm before the deadline.",
               timeout: 8000,
             });
             return;
           }
-          if (secsRemaining <= 45) {
-            const go = window.confirm(`⚠️ Only ${secsRemaining}s left on the SLA deadline.\n\nMetaMask needs ~10s to sign + confirm. This is tight — proceed only if you are quick.\n\nContinue?`);
+          if (secsRemaining <= 30) {
+            const go = window.confirm(`⚠️ Only ${secsRemaining}s left on the SLA deadline.\n\nArc Testnet confirms in ~2s but MetaMask signing takes a few seconds. Proceed immediately if you continue.\n\nContinue?`);
             if (!go) return;
           }
         }
@@ -5568,22 +5582,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                 $("actionReceipt").open = true;
                 $("rcpPayload").focus();
               } else if (a === "fill-timeout") {
+                // Direkt MetaMask aç — forma gitme
                 $("toCallId").value = id;
-                // Scroll to timeout section and open it — let user confirm before sending
-                const section = $("actionTimeout");
-                if (section) {
-                  section.open = true;
-                  section.scrollIntoView({ behavior: "smooth", block: "center" });
-                }
-                // Short delay then highlight the button so user sees what to click
-                setTimeout(() => {
-                  const btn = $("btnTimeout");
-                  if (btn) {
-                    btn.style.transition = "box-shadow 0.3s";
-                    btn.style.boxShadow = "0 0 0 3px var(--accent)";
-                    setTimeout(() => { btn.style.boxShadow = ""; }, 2000);
-                  }
-                }, 400);
+                doTimeout();
               }
             });
           });
@@ -5773,7 +5774,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           return;
         }
         if (ids.length > 3) {
-          toast({ kind: "err", title: "Max 3 providers for multi-call" });
+          toast({ kind: "err", title: "Max 3 providers for multi-call", detail: "Remove extra providers and try again." });
           return;
         }
 
@@ -5896,9 +5897,13 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       async function sendWebhookNotification(msg) {
         const url = getWebhookUrl();
         if (!url) return;
+        // Discord webhooks block direct browser fetch (CORS).
+        // We use no-cors mode so the request is sent as a "fire and forget"
+        // opaque request — Discord receives it but we can't read the response.
         try {
           await fetch(url, {
             method: "POST",
+            mode: "no-cors",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content: `**ArcSLA** · ${msg}` }),
           });
@@ -5985,9 +5990,19 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       $("btnTestWebhook").addEventListener("click", async () => {
         const url = $("webhookUrl").value.trim();
         if (!url) { toast({ kind: "err", title: "Enter a webhook URL first" }); return; }
+        if (!url.includes("discord.com/api/webhooks")) {
+          toast({ kind: "err", title: "Invalid URL", detail: "Must be a Discord webhook URL (discord.com/api/webhooks/…)" });
+          return;
+        }
         try {
-          await fetch(url, { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ content: "**ArcSLA** · test notification ✓" }) });
-          toast({ kind: "ok", title: "Test sent to Discord!", timeout: 4000 });
+          // Discord blocks CORS — use no-cors (fire-and-forget opaque request)
+          await fetch(url, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content: "**ArcSLA** · test notification ✓" })
+          });
+          toast({ kind: "ok", title: "Test sent! Check your Discord channel.", detail: "Note: browser CORS prevents read-back — if nothing appears, verify your webhook URL.", timeout: 6000 });
         } catch(e) {
           toast({ kind: "err", title: "Failed to reach webhook", detail: e.message });
         }
@@ -6148,9 +6163,9 @@ console.log("call opened:", tx.hash);`;
         $("disputeReason").value = "";
         $("disputeExpected").value = "";
         if (withinWindow) {
-          toast({ kind: "ok", title: "Dispute filed within the 5-minute window", detail: "Stored locally · on-chain arbitration coming in v2", timeout: 7000 });
+          toast({ kind: "info", title: "⚠️ Dispute recorded locally", detail: "Stored in your browser only. No on-chain action was taken. On-chain arbitration is planned for v2.", timeout: 8000 });
         } else {
-          toast({ kind: "info", title: "Dispute filed (outside 5-minute window)", detail: "This dispute is recorded but may not qualify for on-chain arbitration", timeout: 7000 });
+          toast({ kind: "info", title: "Dispute recorded (outside window)", detail: "Stored locally only. This dispute is outside the 5-minute window and will not qualify for on-chain arbitration.", timeout: 8000 });
         }
       }
 
@@ -6296,10 +6311,10 @@ console.log("call opened:", tx.hash);`;
         localStorage.setItem("arcsla_price_overrides", JSON.stringify(priceOverrides));
 
         toast({
-          kind: "ok",
-          title: `Price intent saved: ${priceNum} USDC/call`,
-          detail: "Stored locally. On-chain updatePrice() function is planned for v2 — re-register with the new price to apply it on-chain now.",
-          timeout: 10000,
+          kind: "info",
+          title: `⚠️ Price saved locally only`,
+          detail: `${priceNum} USDC/call intent stored. The current contract does not support on-chain price updates — to change your price on-chain, you must re-register with the new price. On-chain updatePrice() is planned for v2.`,
+          timeout: 12000,
         });
 
         const hint = $("updatePriceHint");
@@ -6356,19 +6371,24 @@ console.log("call opened:", tx.hash);`;
       const _origOpenProviderModal = openProviderModal;
 
       // These overrides use window properties so JS hoisting doesn't cause issues
+      let _refreshProviderRunning = false;
       window._patchedRefreshProvider = async function() {
-        const patch = window._patchedRefreshProvider;
-        window._patchedRefreshProvider = null;
-        await refreshProvider();
-        window._patchedRefreshProvider = patch;
-        if (state.providerInfo && window._pendingTags) {
-          saveTags(state.providerInfo.id, window._pendingTags);
-          saveSubProviders(state.providerInfo.id, window._pendingSubProviders || []);
-          window._pendingTags = null;
-          window._pendingSubProviders = null;
-          renderTagFilter();
+        // Guard against re-entrancy
+        if (_refreshProviderRunning) return refreshProvider();
+        _refreshProviderRunning = true;
+        try {
+          await refreshProvider();
+          if (state.providerInfo && window._pendingTags !== undefined && window._pendingTags !== null) {
+            saveTags(state.providerInfo.id, window._pendingTags);
+            saveSubProviders(state.providerInfo.id, window._pendingSubProviders || []);
+            window._pendingTags = null;
+            window._pendingSubProviders = null;
+            renderTagFilter();
+          }
+          maybeShowUpdatePrice();
+        } finally {
+          _refreshProviderRunning = false;
         }
-        maybeShowUpdatePrice();
       };
 
       window._patchedRenderAllProviders = function() {
@@ -6511,20 +6531,24 @@ console.log("call opened:", tx.hash);`;
         resultEl.textContent = "⏳ Pinging…";
         const t0 = Date.now();
         try {
-          const res = await fetch(url, { method: "GET", mode: "no-cors", signal: AbortSignal.timeout(5000) });
+          // no-cors: browser sends the request but blocks the response body.
+          // If fetch() resolves (even as opaque), the server responded.
+          // If it throws, the server is unreachable or timed out.
+          await fetch(url, { method: "GET", mode: "no-cors", signal: AbortSignal.timeout(5000) });
           const ms = Date.now() - t0;
           resultEl.style.color = "var(--accent)";
-          resultEl.textContent = `✓ Reachable — responded in ${ms}ms`;
+          resultEl.textContent = `✓ Server responded in ${ms}ms (CORS headers not checked — endpoint is reachable)`;
         } catch (err) {
           const ms = Date.now() - t0;
-          if (err.name === "TimeoutError") {
+          if (err.name === "TimeoutError" || err.name === "AbortError") {
             resultEl.style.color = "var(--danger)";
-            resultEl.textContent = `✗ Timed out after 5s — endpoint may be down`;
+            resultEl.textContent = `✗ No response after 5s — endpoint may be down or blocking`;
+          } else if (err.message && err.message.toLowerCase().includes("failed to fetch")) {
+            resultEl.style.color = "var(--danger)";
+            resultEl.textContent = `✗ Connection refused or network error (${ms}ms)`;
           } else {
-            // no-cors can throw TypeError even on success in some browsers
-            const ms2 = Date.now() - t0;
             resultEl.style.color = "var(--warn)";
-            resultEl.textContent = `~ Could not verify (CORS restricted) — ${ms2}ms`;
+            resultEl.textContent = `~ ${err.message || "Unknown error"} (${ms}ms)`;
           }
         }
       });
