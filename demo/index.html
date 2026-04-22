@@ -3045,18 +3045,6 @@
                   </div>
                 </div>
                 <div class="field">
-                  <label>Capability tags <span style="color: var(--text-faint); font-weight: 400; font-size: 11px;">(optional)</span> <span class="tip" data-tip="Describe what your service can do. Stored locally and helps callers find you via the tag filter. Examples: summarization, translation, code-review, price-feed, image-generation">?</span></label>
-                  <input type="text" id="regTags" placeholder="e.g. summarization, translation, code-review" />
-                  <div class="hint">Comma-separated. Stored locally — visible to callers in the provider directory.</div>
-                </div>
-
-                <div class="field">
-                  <label>Sub-providers (composite) <span style="color: var(--text-faint); font-weight: 400; font-size: 11px;">(optional)</span> <span class="tip" data-tip="If your service internally calls other ArcSLA providers, list their IDs here. This builds a transparent dependency chain visible to callers.">?</span></label>
-                  <input type="text" id="regSubProviders" placeholder="e.g. 2, 5 (IDs of providers you depend on)" />
-                  <div class="hint">Stored locally. Helps callers understand your service's trust chain.</div>
-                </div>
-
-                <div class="field">
                   <label>Endpoint <span style="color: var(--text-faint); font-weight: 400; font-size: 11px;">(optional)</span> <span class="tip" data-tip="URL where your off-chain service is reachable. Stored on-chain so callers can find you. Not validated by the contract — for testing, any value works (including blank).">?</span></label>
                   <div style="display:flex; gap:8px; align-items:flex-end;">
                     <input type="text" id="regEndpoint" placeholder="https://api.example.com — or leave blank for testing" style="flex:1" />
@@ -3159,19 +3147,6 @@
               </div>
             </details>
 
-            <details class="action" id="actionUpdatePrice" style="display:none">
-              <summary>✏️ Update my price</summary>
-              <div class="action-body">
-                <p style="font-size:13px;color:var(--text-dim);margin:0 0 10px">Change your price per call. This only applies to <strong>new calls</strong> — all currently open calls keep the original price.</p>
-                <div class="field">
-                  <label>New price per call (USDC)</label>
-                  <input type="text" id="updatePriceVal" placeholder="e.g. 0.5" />
-                  <div class="hint" id="updatePriceHint">Current price: loading…</div>
-                </div>
-                <button class="btn btn-primary" id="btnUpdatePrice">Update price</button>
-              </div>
-            </details>
-
             <details class="action" id="actionRouter">
               <summary>⚡ Auto-router — pick best provider</summary>
               <div class="action-body">
@@ -3210,44 +3185,6 @@
               </div>
             </details>
 
-            <details class="action" id="actionChallenge">
-              <summary>🚩 Challenge response quality</summary>
-              <div class="action-body">
-                <p style="font-size:13px;color:var(--text-dim);margin:0 0 10px">Mark a completed call as delivering a low-quality or incorrect response. This is recorded locally and will be used for on-chain quality challenges in v2.</p>
-                <div class="field">
-                  <label>Call ID to challenge</label>
-                  <input type="text" id="challengeCallId" placeholder="0x…" />
-                </div>
-                <div class="field">
-                  <label>Reason</label>
-                  <textarea id="challengeReason" rows="2" placeholder="Describe why the response was incorrect or low quality…"></textarea>
-                </div>
-                <button class="btn btn-sm" style="background:var(--warn-bg);border-color:rgba(217,119,6,0.3);color:var(--warn)" id="btnChallenge">Flag this response</button>
-                <div id="challengeList" style="margin-top:12px;display:flex;flex-direction:column;gap:6px"></div>
-              </div>
-            </details>
-
-            <details class="action" id="actionDispute">
-              <summary>⚖️ File quality dispute</summary>
-              <div class="action-body">
-                <p style="font-size:13px;color:var(--text-dim);margin:0 0 10px">Dispute a completed call where the provider submitted a valid receipt but delivered a useless or incorrect response. Disputes must be filed within <strong>5 minutes</strong> of receipt submission.</p>
-                <div class="field">
-                  <label>Call ID to dispute</label>
-                  <input type="text" id="disputeCallId" placeholder="0x… — auto-filled from completed calls" />
-                  <div class="hint" id="disputeTimeHint">Disputes are stored locally. On-chain arbitration is planned for v2.</div>
-                </div>
-                <div class="field">
-                  <label>What went wrong?</label>
-                  <textarea id="disputeReason" rows="3" placeholder="Describe the problem: wrong answer, empty response, plagiarized content, etc."></textarea>
-                </div>
-                <div class="field">
-                  <label>Expected vs received (optional)</label>
-                  <input type="text" id="disputeExpected" placeholder="e.g. 'Expected a summary, got an error message'" />
-                </div>
-                <button class="btn btn-sm" id="btnDispute" style="background:var(--warn-bg);border-color:rgba(217,119,6,0.3);color:var(--warn)">File dispute</button>
-                <div id="disputeList" style="margin-top:12px;display:flex;flex-direction:column;gap:6px"></div>
-              </div>
-            </details>
           </div>
         </section>
 
@@ -3270,25 +3207,6 @@
           </div>
           <div class="panel-body" id="providerDashBox">
             <div class="empty-state">loading dashboard…</div>
-          </div>
-        </section>
-
-        <!-- ===== WEBHOOK NOTIFICATIONS ===== -->
-        <section class="panel" id="webhookPanel" style="display:none">
-          <div class="panel-head">
-            <h2>Notifications</h2>
-            <span id="webhookStatusBadge" class="webhook-status"><span class="webhook-dot" id="webhookDot"></span><span id="webhookStatusText">not configured</span></span>
-          </div>
-          <div class="panel-body">
-            <div class="field">
-              <label>Discord Webhook URL <span class="tip" data-tip="Paste your Discord webhook URL. You will get a notification every time a call is opened for your provider.">?</span></label>
-              <div style="display:flex;gap:8px">
-                <input type="text" id="webhookUrl" placeholder="https://discord.com/api/webhooks/…" style="flex:1" />
-                <button class="btn btn-sm" id="btnTestWebhook">Test</button>
-                <button class="btn btn-sm btn-primary" id="btnSaveWebhook">Save</button>
-              </div>
-              <div class="hint" id="webhookHint">Saved locally in your browser. Never sent to any server.</div>
-            </div>
           </div>
         </section>
 
@@ -3337,10 +3255,7 @@
               click a row for details
             </span>
           </div>
-          <div class="tag-filter-row" id="tagFilterRow" style="display:none">
-            <span style="font-size:11px;color:var(--text-faint);font-family:var(--font-mono);margin-right:6px;line-height:22px">Filter:</span>
-            <span class="tag-pill selected" data-tag="all" id="tagAll">all</span>
-          </div>
+          <div class="tag-filter-row" id="tagFilterRow" style="display:none"></div>
           <div class="panel-body compact" id="allProvidersBox">
             <div class="empty-state">loading providers…</div>
           </div>
@@ -3547,11 +3462,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         // Polling fallback (in case event listener misses an event)
         lastSyncBlock: 0,
         pollInterval: null,
-        // In-memory session data (NOT persisted — no localStorage)
-        sessionTags: {},      // providerId → string[]  (capability tags entered by user)
-        sessionSubProviders: {}, // providerId → string[]
-        sessionDisputes: [],  // local dispute log for this session
-        sessionChallenges: [],// local challenge log for this session
       };
 
       // -------- Loading state helpers --------
@@ -3774,7 +3684,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                   chainId: CONFIG.chainIdHex,
                   chainName: CONFIG.chainName,
                   rpcUrls: [CONFIG.rpcUrl],
-                  nativeCurrency: { name: "USDC", symbol: CONFIG.nativeSymbol, decimals: 18 },
+                  nativeCurrency: { name: "Arc ETH", symbol: "ETH", decimals: 18 },
                   blockExplorerUrls: [CONFIG.explorerBase],
                 },
               ],
@@ -3981,15 +3891,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         } catch (e) {
           console.error(e);
         }
-        // Apply pending session tags if register just completed
-        if (state.providerInfo && window._pendingTags) {
-          state.sessionTags[state.providerInfo.id]         = window._pendingTags;
-          state.sessionSubProviders[state.providerInfo.id] = window._pendingSubProviders || [];
-          window._pendingTags = null;
-          window._pendingSubProviders = null;
-          renderTagFilter();
-        }
-        maybeShowUpdatePrice();
       }
 
       function renderProvider() {
@@ -4074,8 +3975,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       function renderAllProviders() {
-        // Delegate to filtered version (handles tag filter + tags display)
-        renderTagFilter();
         renderAllProvidersFiltered();
       }
 
@@ -4568,13 +4467,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                 } else {
                   timeline.innerHTML = slashItems.map(c => {
                     const when = c.deadline ? new Date(c.deadline * 1000).toLocaleString() : "unknown time";
-                    const dispute = state.sessionDisputes.find(d => d.callId === c.callId);
                     return `<div class="dispute-timeline-item">
                       <div class="dispute-dot danger"></div>
                       <div>
                         <div style="font-family:var(--font-mono);font-size:11px;color:var(--text)">${short(c.callId, 8)}</div>
                         <div style="color:var(--text-faint);font-size:11px">Deadline: ${when} · by ${short(c.caller, 4)}</div>
-                        ${dispute ? `<div style="color:var(--warn);font-size:11px;margin-top:2px">🚩 Disputed: "${dispute.reason}"</div>` : '<div style="color:var(--text-faint);font-size:11px">No dispute filed</div>'}
                       </div>
                     </div>`;
                   }).join("");
@@ -4594,8 +4491,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               $("actionCall").scrollIntoView({ behavior: "smooth", block: "center" });
             });
           }
-          // Inject tags & sub-provider chain directly (no patching needed)
-          injectModalExtras(providerId);
         } catch (e) {
           console.error(e);
           const body = getBody();
@@ -4824,7 +4719,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           }
           const price = p.pricePerCall;
 
-          // Approve if needed
+          // Check session budget before proceeding
+          const priceNum = parseFloat(ethers.formatUnits(price, state.usdcDecimals));
+          if (!checkBudget(priceNum)) return;
           const currentAllowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
           if (currentAllowance < price) {
             const tA = toast({
@@ -4833,7 +4730,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               detail: `<span class="spinner"></span> waiting for signature`,
               timeout: 0,
             });
-            const txA = await state.usdc.approve(CONFIG.payPerCall, ethers.MaxUint256);
+            const txA = await state.usdc.approve(CONFIG.payPerCall, price);
             await txA.wait();
             tA.remove();
             toast({ kind: "ok", title: "USDC approved", link: txLink(txA.hash) });
@@ -4874,11 +4771,8 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             // Auto-fill receipt/timeout fields for convenience
             $("rcpCallId").value = callId;
             $("toCallId").value = callId;
-            // Track session spend (no localStorage)
-            try {
-              const priceNum = parseFloat(ethers.formatUnits((await state.registry.getProvider(providerId)).pricePerCall, state.usdcDecimals));
-              recordSpend(priceNum);
-            } catch {}
+            // Record spend for session budget tracking
+            recordSpend(priceNum);
           }
           await refreshAll();
         } catch (e) {
@@ -5463,7 +5357,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             if (allowance < totalNeeded) {
               btn.textContent = "Approve USDC (1/1)…";
               toast({ kind: "info", title: "Approving USDC for all calls…", detail: "<span class='spinner'></span> one approval for all providers", timeout: 0 });
-              const txA = await state.usdc.approve(CONFIG.payPerCall, ethers.MaxUint256);
+              const txA = await state.usdc.approve(CONFIG.payPerCall, totalNeeded);
               await txA.wait();
               // Remove approval toast
               document.querySelectorAll(".toast.info").forEach(t => t.remove());
@@ -5499,7 +5393,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                 .find(x => x.name === "CallStarted");
               if (parsed) {
                 row.innerHTML = `#${idStr} — <span style="color:var(--accent)">✓ opened</span> · call ${short(parsed.args.callId, 6)} · <a href="${txLink(tx.hash)}" target="_blank" style="color:var(--accent)">${short(tx.hash, 6)} ↗</a>`;
-                // sendWebhookNotification disabled (CORS blocked)
               }
             } catch(e) {
               row.innerHTML = `#${idStr} — <span style="color:var(--danger)">✗ ${friendlyError(e)}</span>`;
@@ -5515,44 +5408,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         await refreshAll();
       }
 
-      // -------- Quality challenge --------
-
-      function renderChallenges() {
-        const el = $("challengeList");
-        if (!el) return;
-        if (state.sessionChallenges.length === 0) { el.innerHTML = ""; return; }
-        el.innerHTML = state.sessionChallenges.slice(-5).reverse().map(c => `
-          <div style="padding:8px 12px;background:var(--warn-bg);border:1px solid rgba(217,119,6,0.2);border-radius:6px;font-size:12px">
-            <span class="challenge-badge">🚩 flagged</span>
-            <span style="font-family:var(--font-mono);margin-left:8px;color:var(--text-faint)">${short(c.callId, 8)}</span>
-            <div style="color:var(--text-dim);margin-top:4px">${c.reason}</div>
-            <div style="color:var(--text-faint);font-size:10px;margin-top:2px">${new Date(c.ts).toLocaleString()}</div>
-          </div>
-        `).join("");
-      }
-
-      function doChallenge() {
-        const callId = $("challengeCallId").value.trim();
-        const reason = $("challengeReason").value.trim();
-        if (!callId || !reason) {
-          toast({ kind: "err", title: "Fill in both fields" });
-          return;
-        }
-        state.sessionChallenges.push({ callId, reason, ts: Date.now() });
-        renderChallenges();
-        $("challengeCallId").value = "";
-        $("challengeReason").value = "";
-        toast({ kind: "info", title: "Challenge noted (session only)", detail: "⚠ No blockchain transaction sent. On-chain challenge system is not yet deployed. Stored for this session only.", timeout: 8000 });
-      }
-
-      // -------- Webhook notifications --------
-      function getWebhookUrl() { return ""; }  // webhooks disabled (CORS blocked in browser)
-
-      async function sendWebhookNotification(msg) { /* disabled — CORS blocked */ }
-
-      function updateWebhookBadge() { /* webhooks disabled */ }
-
-      // -------- Session budget --------
+      // -------- Session budget (in-memory, no localStorage) --------
       let sessionBudget = { limit: 0, spent: 0 };
 
       function updateBudgetDisplay() {
@@ -5602,18 +5458,6 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         row.innerHTML = `<input type="text" class="multi-pid" placeholder="Provider ID ${existing+1}" /><button class="btn btn-sm btn-danger multi-remove">−</button>`;
         row.querySelector(".multi-remove").addEventListener("click", () => row.remove());
         container.appendChild(row);
-      });
-
-      // Challenge
-      $("btnChallenge").addEventListener("click", doChallenge);
-      renderChallenges();
-
-      // Webhook — disabled in browser (CORS blocks direct Discord calls)
-      $("btnSaveWebhook").addEventListener("click", () => {
-        toast({ kind: "info", title: "Webhooks disabled", detail: "Direct Discord webhooks are CORS-blocked in browsers. Use a server-side relay in production.", timeout: 8000 });
-      });
-      $("btnTestWebhook").addEventListener("click", () => {
-        toast({ kind: "info", title: "Webhooks disabled", detail: "CORS policy blocks direct Discord webhook calls from browsers.", timeout: 6000 });
       });
 
       // Budget
@@ -5710,166 +5554,20 @@ console.log("call opened:", tx.hash);`;
       });
 
       // ================================================================
-      // FEATURE 1: Quality Dispute System
+      // Provider list render (chain data only, no session tags)
       // ================================================================
-      const DISPUTE_WINDOW_SEC = 5 * 60; // 5 minutes
-
-
-      function getDisputeForCall(callId) { return state.sessionDisputes.find(d => d.callId === callId); }
-
-      function canDispute(callId) {
-        const callObj = Array.from(state.myCalls.values()).find(c => c.callId === callId);
-        if (!callObj) return false;
-        if (callObj.status !== 2) return false; // only completed calls
-        const filedAt = callObj.completedAt;
-        if (!filedAt) return true; // no timestamp = assume within window
-        return (Date.now() / 1000 - filedAt) < DISPUTE_WINDOW_SEC;
-      }
-
-      function renderDisputeList() {
-        const el = $("disputeList");
-        if (!el) return;
-        if (state.sessionDisputes.length === 0) { el.innerHTML = ""; return; }
-        el.innerHTML = state.sessionDisputes.slice(-5).reverse().map(d => `
-          <div class="dispute-timeline">
-            <div class="dispute-timeline-item">
-              <div class="dispute-dot danger"></div>
-              <div style="flex:1">
-                <div style="font-family:var(--font-mono);font-size:11px;color:var(--text)">${short(d.callId, 10)}</div>
-                <div style="color:var(--danger);font-size:12px;margin-top:2px">${d.reason}</div>
-                ${d.expected ? `<div style="color:var(--text-faint);font-size:11px">Expected: ${d.expected}</div>` : ""}
-                <div style="color:var(--text-faint);font-size:10px;margin-top:3px">${new Date(d.ts).toLocaleString()} · ${d.withinWindow ? "⚡ filed within window" : "⏱ filed late"}</div>
-              </div>
-            </div>
-          </div>
-        `).join("");
-      }
-
-      // ================================================================
-      // doDispute — session-local dispute log.
-      // The deployed contract does NOT have a dispute() function yet.
-      // This logs disputes in session memory and informs the user clearly.
-      // When contract v2 ships with dispute(), replace session storage
-      // with: const tx = await state.payPerCall.dispute(callId, reason);
-      //        await tx.wait();
-      // ================================================================
-      function doDispute() {
-        const callId  = $("disputeCallId").value.trim();
-        const reason  = $("disputeReason").value.trim();
-        const expected = $("disputeExpected").value.trim();
-        if (!callId || !reason) {
-          toast({ kind: "err", title: "Fill in call ID and reason" });
-          return;
-        }
-        if (getDisputeForCall(callId)) {
-          toast({ kind: "err", title: "Dispute already filed for this call" });
-          return;
-        }
-        if (!state.address) {
-          toast({ kind: "err", title: "Connect wallet first" });
-          return;
-        }
-        const withinWindow = canDispute(callId);
-        state.sessionDisputes.push({ callId, reason, expected, ts: Date.now(), withinWindow });
-        renderDisputeList();
-        $("disputeCallId").value = "";
-        $("disputeReason").value = "";
-        $("disputeExpected").value = "";
-        // Honest message: this is NOT an on-chain transaction
-        toast({
-          kind: withinWindow ? "info" : "info",
-          title: "Dispute recorded (session only)",
-          detail: "⚠ No blockchain transaction sent. On-chain dispute() is not yet deployed. This note is stored for this session only.",
-          timeout: 9000,
-        });
-      }
-
-      // Auto-fill dispute call ID from completed calls
-      $("disputeCallId").addEventListener("focus", () => {
-        if ($("disputeCallId").value) return;
-        const completed = Array.from(state.myCalls.values()).filter(c => c.status === 2);
-        if (completed.length > 0) {
-          $("disputeCallId").value = completed[completed.length - 1].callId;
-        }
-      });
-
-      // Update dispute time hint when call ID changes
-      $("disputeCallId").addEventListener("blur", () => {
-        const callId = $("disputeCallId").value.trim();
-        const hint = $("disputeTimeHint");
-        if (!callId || !hint) return;
-        const callObj = Array.from(state.myCalls.values()).find(c => c.callId === callId);
-        if (!callObj) { hint.textContent = "Call ID not found in your recent calls."; hint.style.color = "var(--warn)"; return; }
-        if (callObj.status !== 2) { hint.textContent = "Only completed calls can be disputed."; hint.style.color = "var(--warn)"; return; }
-        hint.style.color = "";
-        hint.textContent = "Within 5-minute dispute window — you can file a dispute.";
-      });
-
-      $("btnDispute").addEventListener("click", doDispute);
-      renderDisputeList();
-
-      // ================================================================
-      // FEATURE 2: Capability Tags
-      // ================================================================
-      let activeTagFilter = "all";
-
-      function saveTags(providerId, tags) {
-        state.sessionTags[providerId] = tags;
-      }
-
-      function saveSubProviders(providerId, subs) {
-        state.sessionSubProviders[providerId] = subs;
-      }
-
-      function getTagsForProvider(id) {
-        return state.sessionTags[id] || [];
-      }
-
-      function getAllTags() {
-        const all = new Set();
-        Object.values(state.sessionTags).forEach(tags => tags.forEach(t => all.add(t)));
-        return Array.from(all).sort();
-      }
-
-      function renderTagFilter() {
-        const row = $("tagFilterRow");
-        if (!row) return;
-        const allTags = getAllTags();
-        if (allTags.length === 0) { row.style.display = "none"; return; }
-        row.style.display = "flex";
-        row.innerHTML = `<span style="font-size:11px;color:var(--text-faint);font-family:var(--font-mono);margin-right:6px;line-height:22px">Filter:</span>
-          <span class="tag-pill ${activeTagFilter === "all" ? "selected" : ""}" data-tag="all">all</span>
-          ${allTags.map(t => `<span class="tag-pill ${activeTagFilter === t ? "selected" : ""}" data-tag="${t}">${t}</span>`).join("")}`;
-        row.querySelectorAll(".tag-pill").forEach(pill => {
-          pill.addEventListener("click", () => {
-            activeTagFilter = pill.dataset.tag;
-            renderTagFilter();
-            renderAllProvidersFiltered();
-          });
-        });
-      }
-
       function renderAllProvidersFiltered() {
-        const filtered = activeTagFilter === "all"
-          ? state.allProviders
-          : state.allProviders.filter(p => {
-              const tags = getTagsForProvider(p.id);
-              return tags.includes(activeTagFilter);
-            });
-
         const d = state.usdcDecimals;
         const myAddr = state.address?.toLowerCase();
-        const rows = filtered.map(p => {
+        const rows = state.allProviders.map(p => {
           const isSelf = myAddr && p.owner?.toLowerCase() === myAddr;
           const badge = p.active ? `<span class="badge active">active</span>` : `<span class="badge inactive">inactive</span>`;
           const rep = p.reputation ?? 0;
           const repColor = rep >= 80 ? "var(--accent)" : rep >= 50 ? "var(--warn)" : "var(--danger)";
-          const tags = getTagsForProvider(p.id);
-          const tagHtml = tags.length > 0 ? tags.map(t => `<span class="tag-pill" style="font-size:9px;padding:1px 5px">${t}</span>`).join("") : "";
           return `
             <tr data-pid="${p.id}" class="${isSelf ? "is-self" : ""}">
               <td class="col-id">#${p.id}</td>
-              <td class="col-owner">${short(p.owner, 4)}${isSelf ? `<span class="self-tag">you</span>` : ""}<br>${tagHtml}</td>
+              <td class="col-owner">${short(p.owner, 4)}${isSelf ? `<span class="self-tag">you</span>` : ""}</td>
               <td class="col-price">${ethers.formatUnits(p.pricePerCall, d)}</td>
               <td class="col-stake">${ethers.formatUnits(p.stake, d)}</td>
               <td class="col-sla">${p.maxResponseTime}s · ${Number(p.slashBps) / 100}%</td>
@@ -5894,94 +5592,6 @@ console.log("call opened:", tx.hash);`;
         $("allProvidersBox").querySelectorAll("tbody tr[data-pid]").forEach(tr => {
           tr.addEventListener("click", () => openProviderModal(Number(tr.dataset.pid)));
         });
-      }
-
-      // ================================================================
-      // FEATURE 3: Update price
-      // ================================================================
-      async function doUpdatePrice() {
-        const newPrice = $("updatePriceVal").value.trim();
-        if (!newPrice || isNaN(parseFloat(newPrice))) {
-          toast({ kind: "err", title: "Enter a valid USDC price" });
-          return;
-        }
-        if (!state.providerInfo) {
-          toast({ kind: "err", title: "You are not registered as a provider" });
-          return;
-        }
-
-        // Note: The current on-chain contract doesn't have updatePrice().
-        // We store the intent locally and show a note about v2.
-        // When v2 ships with updatePrice(), this wires directly to the contract.
-        const priceNum = parseFloat(newPrice);
-        const providerId = state.providerInfo.id;
-
-        toast({
-          kind: "info",
-          title: `Price update: ${priceNum} USDC/call`,
-          detail: "On-chain updatePrice() is planned for v2. To apply now: unstake and re-register with the new price.",
-          timeout: 10000,
-        });
-
-        const hint = $("updatePriceHint");
-        if (hint) hint.textContent = `Note: re-register to apply ${priceNum} USDC/call on-chain (v2 will add updatePrice())`;
-      }
-
-      // Show update price panel when registered
-      function maybeShowUpdatePrice() {
-        const panel = $("actionUpdatePrice");
-        if (!panel) return;
-        if (state.providerInfo) {
-          panel.style.display = "";
-          const hint = $("updatePriceHint");
-          if (hint) {
-            const d = state.usdcDecimals;
-            const currentPrice = ethers.formatUnits(state.providerInfo.data.pricePerCall, d);
-            hint.textContent = `Current on-chain price: ${currentPrice} USDC`;
-          }
-        } else {
-          panel.style.display = "none";
-        }
-      }
-
-      $("btnUpdatePrice").addEventListener("click", doUpdatePrice);
-
-      // ================================================================
-      // Tags & sub-providers: in-memory per session (no persistence)
-      // Tags saved after register completes (called from doRegister success path)
-      // ================================================================
-
-      // ================================================================
-      // Provider modal tag/sub-provider injection (called directly)
-      // ================================================================
-      function injectModalExtras(providerId) {
-        // After modal renders, inject tags and sub-provider chain
-        setTimeout(() => {
-          const body = document.querySelector(".modal-body");
-          if (!body) return;
-          const tags = getTagsForProvider(providerId);
-          const subs = state.sessionSubProviders[providerId] || [];
-
-          if (tags.length > 0 || subs.length > 0) {
-            const extra = document.createElement("div");
-            extra.style.cssText = "margin-top:14px;padding-top:14px;border-top:1px solid var(--border)";
-
-            if (tags.length > 0) {
-              extra.innerHTML += `<div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:6px">Capabilities</div>
-                <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:12px">${tags.map(t => `<span class="tag-pill">${t}</span>`).join("")}</div>`;
-            }
-
-            if (subs.length > 0) {
-              extra.innerHTML += `<div style="font-size:11px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--text-faint);margin-bottom:6px">Dependency chain (composite)</div>
-                <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-dim)">
-                  This provider uses: ${subs.map(s => `<strong>#${s}</strong>`).join(" → ")} → <strong>#${providerId}</strong>
-                </div>
-                <div style="font-size:11px;color:var(--text-faint);margin-top:4px">Review sub-provider reputations before calling.</div>`;
-            }
-
-            body.appendChild(extra);
-          }
-        }, 300);
       }
 
       // -------- Browse without wallet --------
