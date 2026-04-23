@@ -3791,9 +3791,12 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       async function loadMyCalls() {
         try {
           const myFilter = state.payPerCall.filters.CallStarted(null, null, state.address);
-          const startedLogs = await safeQuery(state.payPerCall, "CallStarted", myFilter);
-          const receiptLogs = await safeQuery(state.payPerCall, "ReceiptSubmitted");
-          const slashedLogs = await safeQuery(state.payPerCall, "CallSlashed");
+          // Run all three log queries in parallel to avoid sequential RPC slowness
+          const [startedLogs, receiptLogs, slashedLogs] = await Promise.all([
+            safeQuery(state.payPerCall, "CallStarted", myFilter),
+            safeQuery(state.payPerCall, "ReceiptSubmitted"),
+            safeQuery(state.payPerCall, "CallSlashed"),
+          ]);
 
           const receiptSet = new Set(receiptLogs.map((l) => l.args.callId));
           const slashedSet = new Set(slashedLogs.map((l) => l.args.callId));
@@ -3806,13 +3809,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             if (receiptSet.has(callId)) status = 2;
             else if (slashedSet.has(callId)) status = 3;
 
-            let startedAt = deadlineNum - 60;
-            let totalSec = 60;
-            try {
-              const onChain = await state.payPerCall.getCall(callId);
-              startedAt = Number(onChain.startedAt);
-              totalSec = deadlineNum - startedAt;
-            } catch {}
+            // Skip sequential getCall() RPC calls — use deadline arithmetic instead
+            const totalSec = 60;
+            const startedAt = deadlineNum - totalSec;
 
             state.myCalls.set(callId, {
               callId,
@@ -4743,7 +4742,13 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               detail: `<span class="spinner"></span> waiting for signature`,
               timeout: 0,
             });
-            const txA = await state.usdc.approve(CONFIG.payPerCall, price);
+            let txA;
+            try {
+              txA = await state.usdc.approve(CONFIG.payPerCall, price);
+            } catch (approveErr) {
+              tA.remove();
+              throw approveErr;
+            }
             await txA.wait();
             tA.remove();
             toast({ kind: "ok", title: "USDC approved", link: txLink(txA.hash) });
@@ -4751,13 +4756,23 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
           // callService
           const requestHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
+          // Clear any stale "Opening call" toasts from previous attempts
+          document.querySelectorAll(".toast.info").forEach(t => {
+            if (t.querySelector(".title")?.textContent?.includes("Opening call")) t.remove();
+          });
           const tC = toast({
             kind: "info",
             title: "Opening call…",
             detail: `<span class="spinner"></span> waiting for signature`,
             timeout: 0,
           });
-          const tx = await state.payPerCall.callService(providerId, requestHash);
+          let tx;
+          try {
+            tx = await state.payPerCall.callService(providerId, requestHash);
+          } catch (callErr) {
+            tC.remove();
+            throw callErr;
+          }
           const rc = await tx.wait();
           tC.remove();
 
