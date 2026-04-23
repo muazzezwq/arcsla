@@ -3910,55 +3910,23 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           if (state.registry)   state.registry.removeAllListeners();
         } catch {}
         if (state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
-        // Stop rAF clock loop on disconnect/reconnect
-        if (_rafHandle) { cancelAnimationFrame(_rafHandle); _rafHandle = null; _lastClockSec = -1; _lastCountdownSec = -1; }
       }
 
-      // -------- Polling fallback (adaptive cadence based on SLA urgency) --------
-      // PERF: Instead of refreshing everything every 15s regardless of urgency,
-      // this uses an adaptive interval:
-      //   - Any call with <60s remaining → poll every 5s (deadline-critical)
-      //   - Otherwise → poll every 30s (background sync)
-      // Only stale data is re-fetched; no full refreshAll() on every tick.
-      function _hasCriticalDeadline() {
-        const nowSec = Date.now() / 1000;
-        for (const c of state.myCalls.values()) {
-          if (c.status === 1 && c.deadline && (c.deadline - nowSec) < 60) return true;
-        }
-        return false;
-      }
-
+      // -------- Polling fallback (fires every 15s, syncs if chain advanced) --------
       function startPollingFallback() {
         if (state.pollInterval) clearInterval(state.pollInterval);
-
-        let _lastPollBlock = 0;
-        const _poll = async () => {
+        state.pollInterval = setInterval(async () => {
           if (!state.address || !state.payPerCall) return;
           try {
             const latest = await state.provider.getBlockNumber();
-            // Adaptive threshold: if deadline-critical, re-sync on every new block; else every 5 blocks
-            const threshold = _hasCriticalDeadline() ? 1 : 5;
-            if (latest <= _lastPollBlock + (threshold - 1)) return;
-            _lastPollBlock = latest;
-            state.lastSyncBlock = latest;
-            // Targeted refreshes only — do NOT call refreshAll() to avoid cascade RPC load
-            await Promise.all([
-              refreshNetworkStats().catch(() => {}),
-              refreshBalance().catch(() => {}),
-            ]);
-            // Leaderboard is low-priority — refresh only on non-critical ticks
-            if (!_hasCriticalDeadline()) {
-              refreshLeaderboard().catch(() => {});
+            if (latest > state.lastSyncBlock + 5) {
+              state.lastSyncBlock = latest;
+              await refreshNetworkStats();
+              await refreshAllProviders();
+              await refreshLeaderboard();
             }
           } catch {}
-        };
-
-        // Adaptive interval: check urgency every 3s and run poll
-        state.pollInterval = setInterval(() => {
-          const interval = _hasCriticalDeadline() ? 3_000 : 30_000;
-          // Use a simple time-gated approach alongside the setInterval
-          _poll();
-        }, 3_000);
+        }, 15_000);
       }
 
       async function ensureArcNetwork() {
@@ -4023,109 +3991,20 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         startLiveClock();
       }
 
-      // Ticking clock + countdown engine — single rAF loop drives everything
-      // PERF: One requestAnimationFrame loop replaces:
-      //   - setInterval(tick, 1000) for clock
-      //   - setInterval(renderCalls, 1000) for countdowns
-      // rAF runs at display refresh rate (60fps) but we only write DOM when
-      // the second actually changes → zero wasted frames, no drift.
-      let _rafHandle = null;
-      let _lastClockSec = -1;
-      let _lastCountdownSec = -1;
-
+      // Ticking clock — updates every second while connected
+      let clockInterval = null;
       function startLiveClock() {
-        if (_rafHandle) return; // already running
-        const clockEl = $("liveClock");
-
-        function _rafTick() {
-          const nowMs = Date.now();
-          const nowSec = Math.floor(nowMs / 1000);
-
-          // Clock — write DOM only on second boundary
-          if (nowSec !== _lastClockSec) {
-            _lastClockSec = nowSec;
-            const d = new Date(nowMs);
-            const hh = String(d.getHours()).padStart(2, "0");
-            const mm = String(d.getMinutes()).padStart(2, "0");
-            const ss = String(d.getSeconds()).padStart(2, "0");
-            const el = $("liveClock");
-            if (el) el.textContent = `${hh}:${mm}:${ss}`;
-          }
-
-          // Countdowns — update call rows only once per second
-          if (nowSec !== _lastCountdownSec && state.myCalls.size > 0) {
-            _lastCountdownSec = nowSec;
-            _tickCountdowns(nowMs);
-          }
-
-          _rafHandle = requestAnimationFrame(_rafTick);
-        }
-
-        _rafHandle = requestAnimationFrame(_rafTick);
-      }
-
-      // Surgical countdown update — only patches text/class nodes that changed.
-      // Does NOT rebuild innerHTML; reads existing call-row elements by data-callid.
-      // PERF: eliminates full DOM rebuild every second in renderCalls().
-      const _warnedAt30 = new Set();
-      const _warnedAt10 = new Set();
-
-      function _tickCountdowns(nowMs) {
-        const nowSec = nowMs / 1000;
-        for (const [callId, c] of state.myCalls) {
-          if (c.status !== 1 || !c.deadline) continue;
-          const secsLeft = Math.round(c.deadline - nowSec);
-          const row = document.querySelector(`.call-row[data-callid="${callId}"]`);
-          if (!row) continue;
-
-          // Update countdown span only
-          let cdSpan = row.querySelector(".countdown");
-          if (!cdSpan) continue;
-
-          if (secsLeft <= 0) {
-            if (cdSpan.className !== "countdown expired") cdSpan.className = "countdown expired";
-            if (cdSpan.textContent !== "expired") cdSpan.textContent = "expired";
-            // Bar'ı sıfırla ve kırmızıya kilitle — expired call donmuş görünmesin
-            const barFillExp = row.querySelector(".sla-bar-fill");
-            if (barFillExp) {
-              if (barFillExp.className !== "sla-bar-fill crit") barFillExp.className = "sla-bar-fill crit";
-              if (barFillExp.style.width !== "0%") barFillExp.style.width = "0%";
-            }
-            continue; // bu call için başka güncelleme yapma
-          } else {
-            const mm = String(Math.floor(secsLeft / 60)).padStart(2, "0");
-            const ss = String(secsLeft % 60).padStart(2, "0");
-            const cls = secsLeft > 30 ? "" : secsLeft > 10 ? "warn" : "urgent";
-            const icon = secsLeft > 30 ? "⏱" : secsLeft > 10 ? "⚠️" : "🚨";
-            const newText = `${icon} ${mm}:${ss}`;
-            const newClass = `countdown ${cls}`.trim();
-            // Only write if changed — avoids layout thrash
-            if (cdSpan.className !== newClass) cdSpan.className = newClass;
-            if (cdSpan.textContent !== newText) cdSpan.textContent = newText;
-
-            // SLA bar update
-            const barFill = row.querySelector(".sla-bar-fill");
-            if (barFill && c.totalSec > 0) {
-              const pct = Math.max(0, Math.min(100, (secsLeft / c.totalSec) * 100));
-              const barClass = pct > 40 ? "sla-bar-fill ok" : pct > 15 ? "sla-bar-fill warn" : "sla-bar-fill crit";
-              const newWidth = pct.toFixed(1) + "%";
-              if (barFill.className !== barClass) barFill.className = barClass;
-              if (barFill.style.width !== newWidth) barFill.style.width = newWidth;
-            }
-
-            // Toast warnings — fire once per threshold
-            if (secsLeft <= 30 && secsLeft > 10 && !_warnedAt30.has(callId)) {
-              _warnedAt30.add(callId);
-              toast({ kind: "info", title: "⚠️ SLA deadline approaching",
-                detail: `call ${short(callId, 6)} · ${secsLeft}s left — sign receipt now`, timeout: 8000 });
-            }
-            if (secsLeft <= 10 && !_warnedAt10.has(callId)) {
-              _warnedAt10.add(callId);
-              toast({ kind: "err", title: "🚨 Last 10 seconds!",
-                detail: `call ${short(callId, 6)} · deadline expiring!`, timeout: 12000 });
-            }
-          }
-        }
+        if (clockInterval) return;
+        const tick = () => {
+          const now = new Date();
+          const hh = String(now.getHours()).padStart(2, "0");
+          const mm = String(now.getMinutes()).padStart(2, "0");
+          const ss = String(now.getSeconds()).padStart(2, "0");
+          const el = $("liveClock");
+          if (el) el.textContent = `${hh}:${mm}:${ss}`;
+        };
+        tick();
+        clockInterval = setInterval(tick, 1000);
       }
 
       // Update SLA gauge based on honor rate (receipts / calls)
@@ -5300,15 +5179,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         }
 
         // ⚠️ Check SLA time remaining before opening MetaMask
-        // PERF: Add 1500ms latency compensation buffer — accounts for:
-        //   - RPC round-trip delay between local clock and chain state (~800ms p95)
-        //   - MetaMask UI open/sign delay
-        // This prevents the "too risky" false-positive when clock drift makes
-        // the deadline look further away than it actually is on-chain.
-        const LATENCY_BUFFER_MS = 1500;
         const callObj = Array.from(state.myCalls.values()).find(c => c.callId === callId);
         if (callObj && callObj.deadline) {
-          const secsRemaining = Math.round(callObj.deadline - (Date.now() + LATENCY_BUFFER_MS) / 1000);
+          const secsRemaining = Math.round(callObj.deadline - Date.now() / 1000);
           if (secsRemaining <= 0) {
             toast({
               kind: "err",
@@ -5476,37 +5349,28 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           });
           if (caller.toLowerCase() === state.address?.toLowerCase()) {
             const deadlineNum = Number(deadline);
-            // PERF: Register call immediately with local-clock estimate so countdown
-            // starts at zero latency. Then correct with on-chain startedAt async.
-            const localNowSec = Math.floor(Date.now() / 1000);
-            const optimisticStartedAt = localNowSec;
-            const optimisticTotal = deadlineNum - optimisticStartedAt;
+            // Fetch on-chain startedAt for accurate progress bar
+            let startedAt = deadlineNum - 60; // fallback: guess 60s window
+            let totalSec = 60;
+            try {
+              const onChain = await state.payPerCall.getCall(callId);
+              startedAt = Number(onChain.startedAt);
+              totalSec = deadlineNum - startedAt;
+            } catch {}
             state.myCalls.set(callId, {
               callId,
               providerId,
               caller,
               amount,
               deadline: deadlineNum,
-              startedAt: optimisticStartedAt,
-              totalSec: optimisticTotal,
+              startedAt,
+              totalSec,
               status: 1,
             });
             // Auto-fill receipt + timeout fields with the latest call id
             $("rcpCallId").value = callId;
             $("toCallId").value = callId;
             renderCalls();
-            // Async correction — patch startedAt/totalSec once chain confirms
-            (async () => {
-              try {
-                const onChain = await state.payPerCall.getCall(callId);
-                const c = state.myCalls.get(callId);
-                if (c && c.status === 1) {
-                  c.startedAt = Number(onChain.startedAt);
-                  c.totalSec = deadlineNum - c.startedAt;
-                  // No full re-render needed — rAF tick will pick up new totalSec
-                }
-              } catch {}
-            })();
           }
           state.provider?.getBlockNumber().then(b => { state.lastSyncBlock = b; }).catch(() => {});
           refreshAll();
@@ -5588,24 +5452,17 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         $("feed").prepend(row);
       }
 
-      // renderCalls rebuild guard — track last rendered state to avoid
-      // rebuilding innerHTML (which breaks rAF countdown references) on every refreshAll()
-      let _lastCallsSnapshot = "";
+      // Track which calls have already triggered deadline warnings to avoid repeat toasts
+      const _warnedAt30 = new Set();
+      const _warnedAt10 = new Set();
 
       function renderCalls() {
         const calls = Array.from(state.myCalls.values()).reverse();
         if (calls.length === 0) {
           $("callsBox").innerHTML = `<div class="empty-state">no calls yet — make one or submit a receipt</div>`;
           $("callsSummary").textContent = "";
-          _lastCallsSnapshot = "";
           return;
         }
-
-        // Build a snapshot key from status+deadline only — if nothing structural changed,
-        // skip the innerHTML rebuild so rAF keeps its live DOM references for countdown ticking
-        const snapshot = calls.map(c => `${c.callId}:${c.status}:${c.deadline}`).join("|");
-        if (snapshot === _lastCallsSnapshot) return; // nothing changed — rAF handles the rest
-        _lastCallsSnapshot = snapshot;
 
         const statusName = ["—", "pending", "completed", "slashed"];
         const statusClass = ["", "status-pending", "status-completed", "status-slashed"];
@@ -5635,7 +5492,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               }
             }
 
-            // Countdown label — rAF tick will keep this live without full re-render
+            // Countdown label
             let countdownHtml = "";
             if (s === 1 && c.deadline) {
               if (secsLeft <= 0) {
@@ -5646,7 +5503,26 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
                 const cls = secsLeft > 30 ? "" : secsLeft > 10 ? "warn" : "urgent";
                 const icon = secsLeft > 30 ? "⏱" : secsLeft > 10 ? "⚠️" : "🚨";
                 countdownHtml = ` · <span class="countdown ${cls}">${icon} ${mm}:${ss}</span>`;
-                // Toast warnings handled by _tickCountdowns in rAF loop
+
+                // Trigger warning toasts
+                if (secsLeft <= 30 && secsLeft > 10 && !_warnedAt30.has(c.callId)) {
+                  _warnedAt30.add(c.callId);
+                  toast({
+                    kind: "info",
+                    title: "⚠️ SLA deadline approaching",
+                    detail: `call ${short(c.callId, 6)} · ${secsLeft}s left — sign receipt now`,
+                    timeout: 8000,
+                  });
+                }
+                if (secsLeft <= 10 && !_warnedAt10.has(c.callId)) {
+                  _warnedAt10.add(c.callId);
+                  toast({
+                    kind: "err",
+                    title: "🚨 Last 10 seconds!",
+                    detail: `call ${short(c.callId, 6)} · deadline expiring!`,
+                    timeout: 12000,
+                  });
+                }
               }
             } else if (s !== 1 && c.deadline) {
               countdownHtml = ` · ${new Date(c.deadline * 1000).toLocaleTimeString("en-US", { hour12: false })}`;
@@ -5700,9 +5576,10 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           });
       }
 
-      // rAF-based countdown engine started in startLiveClock() — see above.
-      // The old setInterval(renderCalls, 1000) is removed; countdowns are now
-      // updated surgically by _tickCountdowns() without rebuilding innerHTML.
+      // Update call countdowns every second
+      setInterval(() => {
+        if (state.myCalls.size > 0) renderCalls();
+      }, 1000);
 
       // Auto-refresh leaderboard + network stats every 30 seconds
       setInterval(() => {
@@ -6222,56 +6099,16 @@ console.log("call opened:", tx.hash);`;
       // avoid a DataCloneError bug in ethers v6 where the provider's internal
       // polling worker tries to postMessage() a Headers object that can't be
       // structured-cloned in some browsers.
-      //
-      // PERF: Multi-RPC fallback with per-request timeout.
-      // Primary RPC is tried first; on failure or timeout the next one is tried.
-      // This eliminates single-point-of-failure stalls that caused stale UI state.
-      const RPC_ENDPOINTS = [
-        CONFIG.rpcUrl,
-        // Add additional public Arc Testnet endpoints here if available:
-        // "https://rpc2.testnet.arc.network",
-      ];
       let _rpcId = 1;
-      let _rpcPrimaryIdx = 0; // tracks which endpoint is currently "healthy"
-
-      async function _rpcCallSingle(url, method, params, timeoutMs = 4000) {
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), timeoutMs);
-        try {
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ jsonrpc: "2.0", id: _rpcId++, method, params }),
-            signal: controller.signal,
-          });
-          const json = await res.json();
-          if (json.error) throw new Error(json.error.message);
-          return json.result;
-        } finally {
-          clearTimeout(timer);
-        }
-      }
-
       async function rpcCall(method, params = []) {
-        const endpoints = RPC_ENDPOINTS;
-        // Try primary first, then rotate through fallbacks
-        const order = [
-          _rpcPrimaryIdx,
-          ...endpoints.map((_, i) => i).filter(i => i !== _rpcPrimaryIdx),
-        ];
-        let lastErr;
-        for (const idx of order) {
-          try {
-            const result = await _rpcCallSingle(endpoints[idx], method, params);
-            if (idx !== _rpcPrimaryIdx) {
-              _rpcPrimaryIdx = idx; // promote this endpoint as new primary
-            }
-            return result;
-          } catch (e) {
-            lastErr = e;
-          }
-        }
-        throw lastErr;
+        const res = await fetch(CONFIG.rpcUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ jsonrpc: "2.0", id: _rpcId++, method, params }),
+        });
+        const json = await res.json();
+        if (json.error) throw new Error(json.error.message);
+        return json.result;
       }
 
       // eth_call helper — encodes a simple no-arg view call and decodes uint256
@@ -6423,32 +6260,22 @@ console.log("call opened:", tx.hash);`;
             }
           }
 
-          // Adaptive landing feed: poll for new blocks every 3s but only fetch logs
-          // when the block actually advanced. Avoids hammering RPC with no-op fetches.
-          let landingLastBlock = latest;
-          let _landingPollTimer = null;
-
-          const scheduleLandingPoll = (delayMs) => {
-            if (_landingPollTimer) clearTimeout(_landingPollTimer);
-            _landingPollTimer = setTimeout(async () => {
-              await pollLanding();
-              // Adaptive: if events arrived, check again sooner (new activity burst)
-              scheduleLandingPoll(3_000);
-            }, delayMs);
-          };
+          // Poll for new events every 10s on the landing feed (no websocket needed)
+          let lastSeenBlock = latest;
+          const landingDedupe = new Set(events.map(e => e.txHash));
 
           const pollLanding = async () => {
             try {
               const nowHex = await rpcCall("eth_blockNumber");
               const nowBlock = Number(BigInt(nowHex));
-              if (nowBlock <= landingLastBlock) return; // no new blocks — skip log fetch
+              if (nowBlock <= lastSeenBlock) return;
               const [ns, nr, nsl, nrg] = await Promise.all([
-                fetchLogsChunked(CONFIG.payPerCall, TOPICS.CallStarted,        landingLastBlock + 1, nowBlock),
-                fetchLogsChunked(CONFIG.payPerCall, TOPICS.ReceiptSubmitted,   landingLastBlock + 1, nowBlock),
-                fetchLogsChunked(CONFIG.payPerCall, TOPICS.CallSlashed,        landingLastBlock + 1, nowBlock),
-                fetchLogsChunked(CONFIG.registry,   TOPICS.ProviderRegistered, landingLastBlock + 1, nowBlock),
+                fetchLogsChunked(CONFIG.payPerCall, TOPICS.CallStarted,        lastSeenBlock + 1, nowBlock),
+                fetchLogsChunked(CONFIG.payPerCall, TOPICS.ReceiptSubmitted,   lastSeenBlock + 1, nowBlock),
+                fetchLogsChunked(CONFIG.payPerCall, TOPICS.CallSlashed,        lastSeenBlock + 1, nowBlock),
+                fetchLogsChunked(CONFIG.registry,   TOPICS.ProviderRegistered, lastSeenBlock + 1, nowBlock),
               ]);
-              landingLastBlock = nowBlock;
+              lastSeenBlock = nowBlock;
               const newEvts = [];
               for (const l of nrg) {
                 try { const p = regIface.parseLog({ topics: l.topics, data: l.data }); newEvts.push({ tag: "registered", tagText: "provider", blockNumber: Number(BigInt(l.blockNumber)), txHash: l.transactionHash, body: `#${p.args.providerId} registered by <span class="hi">${short(p.args.owner,4)}</span> · ${ethers.formatUnits(p.args.stake, safeDecimals)} USDC staked` }); } catch {}
@@ -6478,8 +6305,7 @@ console.log("call opened:", tx.hash);`;
               }
             } catch {}
           };
-          // Kick off adaptive block-gated polling (replaces fixed setInterval(10_000))
-          scheduleLandingPoll(3_000);
+          setInterval(pollLanding, 10_000);
 
         } catch (e) {
           console.warn("boot stats failed:", e);
