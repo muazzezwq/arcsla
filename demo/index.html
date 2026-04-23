@@ -4786,6 +4786,30 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             $("toCallId").value = callId;
             // Record spend for session budget tracking
             recordSpend(priceNum);
+
+            // Directly add to myCalls so "Your Calls" panel updates immediately
+            // even if the event listener is slow or missed
+            if (!state.myCalls.has(callId)) {
+              const deadlineNum = Number(parsed.args.deadline);
+              let startedAt = deadlineNum - Number(p.maxResponseTime || 60);
+              let totalSec = Number(p.maxResponseTime || 60);
+              try {
+                const onChain = await state.payPerCall.getCall(callId);
+                startedAt = Number(onChain.startedAt);
+                totalSec = deadlineNum - startedAt;
+              } catch {}
+              state.myCalls.set(callId, {
+                callId,
+                providerId,
+                caller: state.address,
+                amount: price,
+                deadline: deadlineNum,
+                startedAt,
+                totalSec,
+                status: 1,
+              });
+              renderCalls();
+            }
           }
           await refreshAll();
         } catch (e) {
