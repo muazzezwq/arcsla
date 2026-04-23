@@ -3279,8 +3279,8 @@
 <span class="kw">const</span> usdc     = <span class="kw">new</span> ethers.<span class="fn">Contract</span>(<span class="str">"0x3600000000000000000000000000000000000000"</span>, [<span class="str">"function approve(address,uint256) returns(bool)"</span>], wallet);
 <span class="kw">const</span> arc      = <span class="kw">new</span> ethers.<span class="fn">Contract</span>(<span class="str">"0x28aa00Af89483218E6Bc036a72C4bAe8A1514BFE"</span>, [<span class="str">"function callService(uint256,bytes32) returns(bytes32)"</span>], wallet);
 
-<span class="cm">// 1. Approve USDC</span>
-<span class="kw">await</span> usdc.<span class="fn">approve</span>(arc.target, ethers.<span class="fn">parseUnits</span>(<span class="str">"1"</span>, <span class="str">6</span>));
+<span class="cm">// 1. Approve USDC (Arc USDC uses 18 decimals, not the standard 6)</span>
+<span class="kw">await</span> usdc.<span class="fn">approve</span>(arc.target, ethers.<span class="fn">parseUnits</span>(<span class="str">"1"</span>, <span class="str">18</span>));
 
 <span class="cm">// 2. Open call to provider #1</span>
 <span class="kw">const</span> requestHash = ethers.<span class="fn">keccak256</span>(ethers.<span class="fn">toUtf8Bytes</span>(<span class="str">"summarize this document"</span>));
@@ -5602,7 +5602,8 @@ const provider = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
 const wallet   = new ethers.Wallet(PRIVATE_KEY, provider);
 const usdc     = new ethers.Contract("0x3600000000000000000000000000000000000000", ["function approve(address,uint256) returns(bool)"], wallet);
 const arc      = new ethers.Contract("0x28aa00Af89483218E6Bc036a72C4bAe8A1514BFE", ["function callService(uint256,bytes32) returns(bytes32)"], wallet);
-await usdc.approve(arc.target, ethers.parseUnits("1", 6));
+// Note: Arc USDC uses 18 decimals (not the standard 6)
+await usdc.approve(arc.target, ethers.parseUnits("1", 18));
 const requestHash = ethers.keccak256(ethers.toUtf8Bytes("summarize this document"));
 const tx = await arc.callService(1, requestHash);
 console.log("call opened:", tx.hash);`;
