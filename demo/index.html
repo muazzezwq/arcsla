@@ -4085,6 +4085,13 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           if (secsLeft <= 0) {
             if (cdSpan.className !== "countdown expired") cdSpan.className = "countdown expired";
             if (cdSpan.textContent !== "expired") cdSpan.textContent = "expired";
+            // Bar'ı sıfırla ve kırmızıya kilitle — expired call donmuş görünmesin
+            const barFillExp = row.querySelector(".sla-bar-fill");
+            if (barFillExp) {
+              if (barFillExp.className !== "sla-bar-fill crit") barFillExp.className = "sla-bar-fill crit";
+              if (barFillExp.style.width !== "0%") barFillExp.style.width = "0%";
+            }
+            continue; // bu call için başka güncelleme yapma
           } else {
             const mm = String(Math.floor(secsLeft / 60)).padStart(2, "0");
             const ss = String(secsLeft % 60).padStart(2, "0");
@@ -5581,13 +5588,24 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         $("feed").prepend(row);
       }
 
+      // renderCalls rebuild guard — track last rendered state to avoid
+      // rebuilding innerHTML (which breaks rAF countdown references) on every refreshAll()
+      let _lastCallsSnapshot = "";
+
       function renderCalls() {
         const calls = Array.from(state.myCalls.values()).reverse();
         if (calls.length === 0) {
           $("callsBox").innerHTML = `<div class="empty-state">no calls yet — make one or submit a receipt</div>`;
           $("callsSummary").textContent = "";
+          _lastCallsSnapshot = "";
           return;
         }
+
+        // Build a snapshot key from status+deadline only — if nothing structural changed,
+        // skip the innerHTML rebuild so rAF keeps its live DOM references for countdown ticking
+        const snapshot = calls.map(c => `${c.callId}:${c.status}:${c.deadline}`).join("|");
+        if (snapshot === _lastCallsSnapshot) return; // nothing changed — rAF handles the rest
+        _lastCallsSnapshot = snapshot;
 
         const statusName = ["—", "pending", "completed", "slashed"];
         const statusClass = ["", "status-pending", "status-completed", "status-slashed"];
