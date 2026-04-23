@@ -2696,6 +2696,7 @@
           <div class="addr-pill hidden" id="addrPill" title="Click to copy">
             <span id="addrText"></span>
           </div>
+          <button class="btn btn-sm btn-danger hidden" id="btnResetMM" title="Takili islemler varsa kullan" style="font-size:11px;padding:5px 10px">Reset</button>
         </div>
       </div>
     </header>
@@ -3715,6 +3716,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         $("balanceBox").classList.remove("hidden");
         $("netLabel").textContent = CONFIG.chainName;
         $("netDot").classList.add("ok");
+        $("btnResetMM").classList.remove("hidden");
         startLiveClock();
       }
 
@@ -4598,41 +4600,45 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           const priceWei = ethers.parseUnits(price, state.usdcDecimals);
           const slashBps = Math.round(slashPct * 100);
 
-          // Step 1: approve
-          const tApprove = toast({
-            kind: "info",
-            title: "Approving USDC…",
-            detail: `<span class="spinner"></span> waiting for signature`,
-            timeout: 0,
-          });
-          const txA = await state.usdc.approve(CONFIG.registry, stakeWei);
-          tApprove.querySelector(".title").textContent = "Approval sent";
-          tApprove.querySelector(".detail").innerHTML = `tx ${short(txA.hash, 6)}`;
-          await txA.wait();
-          tApprove.remove();
-          toast({
-            kind: "ok",
-            title: "USDC approved",
-            link: txLink(txA.hash),
-            detail: short(txA.hash, 8),
-          });
+          // Step 1: approve — skip if allowance already sufficient
+          document.querySelectorAll(".toast.info").forEach(t => t.remove());
+          const existingAllowance = await state.usdc.allowance(state.address, CONFIG.registry);
+          if (existingAllowance < stakeWei) {
+            const tApprove = toast({
+              kind: "info",
+              title: "Approving USDC…",
+              detail: `<span class="spinner"></span> Waiting for MetaMask signature`,
+              timeout: 60000,
+            });
+            let txA;
+            try {
+              txA = await state.usdc.approve(CONFIG.registry, ethers.MaxUint256);
+            } catch (approveErr) {
+              tApprove.remove();
+              throw approveErr;
+            }
+            tApprove.querySelector(".title").textContent = "Approval sent";
+            tApprove.querySelector(".detail").innerHTML = `tx ${short(txA.hash, 6)}`;
+            await txA.wait();
+            tApprove.remove();
+            toast({ kind: "ok", title: "USDC approved ✓", link: txLink(txA.hash), detail: short(txA.hash, 8) });
+          }
 
           // Step 2: register
           const tReg = toast({
             kind: "info",
             title: "Registering provider…",
-            detail: `<span class="spinner"></span> waiting for signature`,
-            timeout: 0,
+            detail: `<span class="spinner"></span> Waiting for MetaMask signature`,
+            timeout: 60000,
           });
-          const tx = await state.registry.register(
-            signerAddr,
-            stakeWei,
-            priceWei,
-            maxResp,
-            slashBps,
-            endpoint,
-          );
-          const receipt = await tx.wait();
+          let tx;
+          try {
+            tx = await state.registry.register(signerAddr, stakeWei, priceWei, maxResp, slashBps, endpoint);
+          } catch (regErr) {
+            tReg.remove();
+            throw regErr;
+          }
+          await tx.wait();
           tReg.remove();
           toast({
             kind: "ok",
@@ -4704,21 +4710,21 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       // Returns true if safe to proceed, false if user chose to abort.
       async function checkNoPendingTx() {
         try {
-          const pending = await state.provider.send("eth_getTransactionCount", [state.address, "pending"]);
+          const pending   = await state.provider.send("eth_getTransactionCount", [state.address, "pending"]);
           const confirmed = await state.provider.send("eth_getTransactionCount", [state.address, "latest"]);
           const stuck = Number(pending) - Number(confirmed);
           if (stuck > 0) {
+            toast({
+              kind: "err",
+              title: `⚠️ ${stuck} stuck transaction${stuck > 1 ? "s" : ""} in MetaMask`,
+              detail: `New transactions will queue behind them and may hang.<br><strong>Fix:</strong> MetaMask &rarr; Activity &rarr; Speed Up or Cancel, or press the Reset button.`,
+              timeout: 12000,
+            });
             return window.confirm(
-              `⚠️ MetaMask has ${stuck} unconfirmed transaction(s) pending.
-
-` +
-              `New transactions will queue behind them and may appear to hang.
-
-` +
-              `→ Open MetaMask → Activity → Speed Up or Cancel the pending tx.
-
-` +
-              `Click OK to send anyway, or Cancel to fix MetaMask first.`
+              "MetaMask has " + stuck + " unconfirmed transaction(s).\n" +
+              "New transactions will queue and may appear stuck.\n\n" +
+              "Fix: MetaMask \u2192 Activity \u2192 Speed Up or Cancel\n\n" +
+              "Continue anyway?"
             );
           }
         } catch {}
@@ -4762,37 +4768,36 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           // Check session budget before proceeding
           const priceNum = parseFloat(ethers.formatUnits(price, state.usdcDecimals));
           if (!checkBudget(priceNum)) throw new Error("budget exceeded");
+          // Approve only when needed — MaxUint256 = fires only once ever, no more double-TX
           const currentAllowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
           if (currentAllowance < price) {
+            document.querySelectorAll(".toast.info").forEach(t => t.remove());
             const tA = toast({
               kind: "info",
               title: "Approving USDC…",
-              detail: `<span class="spinner"></span> waiting for signature`,
-              timeout: 0,
+              detail: `<span class="spinner"></span> One-time approval — never asked again`,
+              timeout: 60000,
             });
             let txA;
             try {
-              txA = await state.usdc.approve(CONFIG.payPerCall, price);
+              txA = await state.usdc.approve(CONFIG.payPerCall, ethers.MaxUint256);
             } catch (approveErr) {
               tA.remove();
               throw approveErr;
             }
             await txA.wait();
             tA.remove();
-            toast({ kind: "ok", title: "USDC approved", link: txLink(txA.hash) });
+            toast({ kind: "ok", title: "USDC approved ✓", detail: "Future calls go through in a single TX", link: txLink(txA.hash) });
           }
 
           // callService
           const requestHash = ethers.keccak256(ethers.toUtf8Bytes(payload));
-          // Clear any stale "Opening call" toasts from previous attempts
-          document.querySelectorAll(".toast.info").forEach(t => {
-            if (t.querySelector(".title")?.textContent?.includes("Opening call")) t.remove();
-          });
+          document.querySelectorAll(".toast.info").forEach(t => t.remove());
           const tC = toast({
             kind: "info",
             title: "Opening call…",
-            detail: `<span class="spinner"></span> waiting for signature`,
-            timeout: 0,
+            detail: `<span class="spinner"></span> Waiting for MetaMask signature`,
+            timeout: 60000,
           });
           let tx;
           try {
@@ -4943,11 +4948,12 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             ethers.getBytes(responseHash)
           ]));
           // Use signMessage on the raw bytes — ethers v6 wraps with \x19 prefix
+          document.querySelectorAll(".toast.info").forEach(t => t.remove());
           const tSign = toast({
             kind: "info",
             title: "Signing receipt…",
-            detail: `<span class="spinner"></span> sign in your wallet`,
-            timeout: 0,
+            detail: `<span class="spinner"></span> Sign in MetaMask`,
+            timeout: 60000,
           });
           const signature = await state.signer.signMessage(ethers.getBytes(inner));
           tSign.remove();
@@ -4955,8 +4961,8 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           const tSub = toast({
             kind: "info",
             title: "Submitting receipt…",
-            detail: `<span class="spinner"></span> waiting for signature`,
-            timeout: 0,
+            detail: `<span class="spinner"></span> Waiting for MetaMask signature`,
+            timeout: 60000,
           });
           const tx = await state.payPerCall.submitReceipt(callId, responseHash, signature);
           await tx.wait();
@@ -4999,15 +5005,22 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         btn.textContent = "Processing…";
 
         try {
-          const t = toast({
+          document.querySelectorAll(".toast.info").forEach(t => t.remove());
+          const tTO = toast({
             kind: "info",
             title: "Claiming timeout…",
-            detail: `<span class="spinner"></span> waiting for signature`,
-            timeout: 0,
+            detail: `<span class="spinner"></span> Waiting for MetaMask signature`,
+            timeout: 60000,
           });
-          const tx = await state.payPerCall.claimTimeout(callId);
+          let tx;
+          try {
+            tx = await state.payPerCall.claimTimeout(callId);
+          } catch (toErr) {
+            tTO.remove();
+            throw toErr;
+          }
           await tx.wait();
-          t.remove();
+          tTO.remove();
           toast({
             kind: "ok",
             title: "Timeout claimed — provider slashed",
@@ -5352,6 +5365,31 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       $("addrPill").addEventListener("click", async () => {
         await navigator.clipboard.writeText(state.address);
         toast({ kind: "ok", title: "Address copied", timeout: 2000 });
+      });
+
+      // -------- MetaMask Reset button --------
+      $("btnResetMM").addEventListener("click", async () => {
+        let stuckCount = 0;
+        try {
+          const p = await state.provider.send("eth_getTransactionCount", [state.address, "pending"]);
+          const c = await state.provider.send("eth_getTransactionCount", [state.address, "latest"]);
+          stuckCount = Math.max(0, Number(p) - Number(c));
+        } catch {}
+
+        const msg = stuckCount > 0
+          ? "MetaMask has " + stuckCount + " stuck transaction(s) detected.\n\n" +
+            "Reset Account will:\n" +
+            "✓ Leave your funds and wallet untouched\n" +
+            "✓ Clear only pending / stuck transactions\n\n" +
+            "To do it: MetaMask → Settings → Advanced → Reset Account\n\n" +
+            "Reload the page now?"
+          : "No stuck transactions detected. Reload the page anyway?";
+
+        if (confirm(msg)) {
+          document.querySelectorAll(".toast").forEach(t => t.remove());
+          setLoading(false);
+          location.reload();
+        }
       });
 
       // -------- Auto-router --------
