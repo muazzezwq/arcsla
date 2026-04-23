@@ -4700,6 +4700,31 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       // -------- Actions: call service --------
+      // ---- MetaMask pending tx guard ----
+      // Returns true if safe to proceed, false if user chose to abort.
+      async function checkNoPendingTx() {
+        try {
+          const pending = await state.provider.send("eth_getTransactionCount", [state.address, "pending"]);
+          const confirmed = await state.provider.send("eth_getTransactionCount", [state.address, "latest"]);
+          const stuck = Number(pending) - Number(confirmed);
+          if (stuck > 0) {
+            return window.confirm(
+              `⚠️ MetaMask has ${stuck} unconfirmed transaction(s) pending.
+
+` +
+              `New transactions will queue behind them and may appear to hang.
+
+` +
+              `→ Open MetaMask → Activity → Speed Up or Cancel the pending tx.
+
+` +
+              `Click OK to send anyway, or Cancel to fix MetaMask first.`
+            );
+          }
+        } catch {}
+        return true;
+      }
+
       async function doCall() {
         // Network guard — reject if not on Arc Testnet
         if (state.chainId && state.chainId !== CONFIG.chainId) {
@@ -4717,6 +4742,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
         const btn = $("btnCall");
         if (btn.disabled) return;
+
+        if (!await checkNoPendingTx()) return;
+
         setLoading(true);
         btn.disabled = true;
         const origText = btn.textContent;
@@ -4897,6 +4925,8 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             if (!go) return; // safe: setLoading not yet called
           }
         }
+
+        if (!await checkNoPendingTx()) return;
 
         setLoading(true);
         btn.disabled = true;
