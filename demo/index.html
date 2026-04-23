@@ -3583,16 +3583,9 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         try {
           state.provider = new ethers.BrowserProvider(window.ethereum);
 
-          // Request accounts — fall back to eth_requestAccounts if wallet_requestPermissions unsupported
-          try {
-            await window.ethereum.request({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] });
-          } catch (permErr) {
-            if (permErr.code === 4200 || permErr.code === -32601) {
-              await state.provider.send("eth_requestAccounts", []);
-            } else {
-              throw permErr;
-            }
-          }
+          // Request accounts — eth_requestAccounts is the safest primary method.
+          // wallet_requestPermissions can hang if MetaMask already has a pending request.
+          await window.ethereum.request({ method: "eth_requestAccounts" });
 
           state.signer  = await state.provider.getSigner();
           state.address = await state.signer.getAddress();
@@ -3665,35 +3658,52 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       }
 
       async function ensureArcNetwork() {
-        const net = await state.provider.getNetwork();
-        if (Number(net.chainId) === CONFIG.chainId) return;
+        // Re-create provider snapshot to get current chainId reliably
+        const snap = new ethers.BrowserProvider(window.ethereum);
+        const net  = await snap.getNetwork();
+        if (Number(net.chainId) === CONFIG.chainId) return; // already on Arc Testnet
 
         try {
+          // Try switching first — works if the network was added before
           await window.ethereum.request({
             method: "wallet_switchEthereumChain",
             params: [{ chainId: CONFIG.chainIdHex }],
           });
-        } catch (e) {
-          if (e.code === 4902) {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [
-                {
+        } catch (switchErr) {
+          if (switchErr.code === 4902 || switchErr.code === -32603) {
+            // Network not yet in wallet — add it
+            try {
+              await window.ethereum.request({
+                method: "wallet_addEthereumChain",
+                params: [{
                   chainId: CONFIG.chainIdHex,
                   chainName: CONFIG.chainName,
                   rpcUrls: [CONFIG.rpcUrl],
                   nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
                   blockExplorerUrls: [CONFIG.explorerBase],
-                },
-              ],
-            });
+                }],
+              });
+              // After adding, switch to it explicitly
+              await window.ethereum.request({
+                method: "wallet_switchEthereumChain",
+                params: [{ chainId: CONFIG.chainIdHex }],
+              }).catch(() => {}); // MetaMask auto-switches after add — ignore if fails
+            } catch (addErr) {
+              if (addErr.code === 4001) {
+                throw new Error("You must approve adding Arc Testnet to MetaMask to continue.");
+              }
+              throw addErr;
+            }
+          } else if (switchErr.code === 4001) {
+            throw new Error("You must switch to Arc Testnet in MetaMask to continue.");
           } else {
-            throw e;
+            throw switchErr;
           }
         }
+        // Refresh provider/signer after network switch
         state.provider = new ethers.BrowserProvider(window.ethereum);
-        state.signer = await state.provider.getSigner();
-        state.address = await state.signer.getAddress();
+        state.signer   = await state.provider.getSigner();
+        state.address  = await state.signer.getAddress();
       }
 
       function showConnected() {
@@ -3832,9 +3842,18 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
 
       async function refreshBalance() {
         try {
+          if (!state.usdc || !state.address) return;
+          // Ensure decimals are fetched (fallback to 6 for Arc USDC)
+          if (!state.usdcDecimals) {
+            try { state.usdcDecimals = Number(await state.usdc.decimals()); }
+            catch { state.usdcDecimals = 6; }
+          }
           const b = await state.usdc.balanceOf(state.address);
-          $("usdcBal").textContent = ethers.formatUnits(b, state.usdcDecimals);
+          const formatted = ethers.formatUnits(b, state.usdcDecimals);
+          // Show up to 4 decimal places
+          $("usdcBal").textContent = parseFloat(formatted).toFixed(4).replace(/\.?0+$/, "") || "0";
         } catch (e) {
+          console.warn("refreshBalance failed:", e.message);
           $("usdcBal").textContent = "—";
         }
       }
@@ -4709,13 +4728,13 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           const p = await state.registry.getProvider(providerId);
           if (!p.active) {
             toast({ kind: "err", title: "Provider is inactive" });
-            return;
+            throw new Error("provider inactive"); // use throw so finally runs
           }
           const price = p.pricePerCall;
 
           // Check session budget before proceeding
           const priceNum = parseFloat(ethers.formatUnits(price, state.usdcDecimals));
-          if (!checkBudget(priceNum)) return;
+          if (!checkBudget(priceNum)) throw new Error("budget exceeded");
           const currentAllowance = await state.usdc.allowance(state.address, CONFIG.payPerCall);
           if (currentAllowance < price) {
             const tA = toast({
@@ -4823,7 +4842,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               detail: "This call has expired. Use 'Claim timeout' to get a refund.",
               timeout: 8000,
             });
-            return;
+            return; // safe: setLoading not yet called
           }
           if (secsRemaining <= 20) {
             toast({
@@ -4832,11 +4851,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
               detail: "MetaMask needs ~10s to confirm. There is not enough time to safely submit this receipt.",
               timeout: 8000,
             });
-            return;
+            return; // safe: setLoading not yet called
           }
           if (secsRemaining <= 45) {
             const go = window.confirm(`⚠️ Only ${secsRemaining}s left on the SLA deadline.\n\nMetaMask needs ~10s to sign + confirm. This is tight — proceed only if you are quick.\n\nContinue?`);
-            if (!go) return;
+            if (!go) return; // safe: setLoading not yet called
           }
         }
 
