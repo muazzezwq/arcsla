@@ -3279,8 +3279,8 @@
 <span class="kw">const</span> usdc     = <span class="kw">new</span> ethers.<span class="fn">Contract</span>(<span class="str">"0x3600000000000000000000000000000000000000"</span>, [<span class="str">"function approve(address,uint256) returns(bool)"</span>], wallet);
 <span class="kw">const</span> arc      = <span class="kw">new</span> ethers.<span class="fn">Contract</span>(<span class="str">"0x28aa00Af89483218E6Bc036a72C4bAe8A1514BFE"</span>, [<span class="str">"function callService(uint256,bytes32) returns(bytes32)"</span>], wallet);
 
-<span class="cm">// 1. Approve USDC (Arc USDC uses 18 decimals, not the standard 6)</span>
-<span class="kw">await</span> usdc.<span class="fn">approve</span>(arc.target, ethers.<span class="fn">parseUnits</span>(<span class="str">"1"</span>, <span class="str">18</span>));
+<span class="cm">// 1. Approve USDC</span>
+<span class="kw">await</span> usdc.<span class="fn">approve</span>(arc.target, ethers.<span class="fn">parseUnits</span>(<span class="str">"1"</span>, <span class="str">6</span>));
 
 <span class="cm">// 2. Open call to provider #1</span>
 <span class="kw">const</span> requestHash = ethers.<span class="fn">keccak256</span>(ethers.<span class="fn">toUtf8Bytes</span>(<span class="str">"summarize this document"</span>));
@@ -3650,9 +3650,11 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
             const latest = await state.provider.getBlockNumber();
             if (latest > state.lastSyncBlock + 5) {
               state.lastSyncBlock = latest;
-              await refreshNetworkStats();
-              await refreshAllProviders();
-              await refreshLeaderboard();
+              await Promise.all([
+                refreshNetworkStats(),
+                refreshAllProviders(),
+              ]);
+              await refreshLeaderboard(); // needs allProviders populated
             }
           } catch {}
         }, 15_000);
@@ -5602,8 +5604,7 @@ const provider = new ethers.JsonRpcProvider("https://rpc.testnet.arc.network");
 const wallet   = new ethers.Wallet(PRIVATE_KEY, provider);
 const usdc     = new ethers.Contract("0x3600000000000000000000000000000000000000", ["function approve(address,uint256) returns(bool)"], wallet);
 const arc      = new ethers.Contract("0x28aa00Af89483218E6Bc036a72C4bAe8A1514BFE", ["function callService(uint256,bytes32) returns(bytes32)"], wallet);
-// Note: Arc USDC uses 18 decimals (not the standard 6)
-await usdc.approve(arc.target, ethers.parseUnits("1", 18));
+await usdc.approve(arc.target, ethers.parseUnits("1", 6));
 const requestHash = ethers.keccak256(ethers.toUtf8Bytes("summarize this document"));
 const tx = await arc.callService(1, requestHash);
 console.log("call opened:", tx.hash);`;
@@ -5883,26 +5884,35 @@ console.log("call opened:", tx.hash);`;
           const payIface = new ethers.Interface(PAY_ABI);
           const regIface = new ethers.Interface(REGISTRY_ABI);
 
-          // Fetch USDC decimals
-          try {
-            const decResult = await rpcCall("eth_call", [{ to: CONFIG.usdc, data: SEL_DECIMALS }, "latest"]);
-            if (decResult && decResult !== "0x") {
-              state.usdcDecimals = Number(BigInt(decResult));
-            }
-          } catch {}
+          // --- Phase 1: immediate data (provider count + USDC decimals) ---
+          // These are single-call reads, return in ~200ms.
+          // Update hero stats ASAP so the page doesn't feel like it's loading.
+          const [decResult, nextProviderIdRaw, latestHex] = await Promise.all([
+            rpcCall("eth_call", [{ to: CONFIG.usdc, data: SEL_DECIMALS }, "latest"]).catch(() => null),
+            rpcCall("eth_call", [{ to: CONFIG.registry, data: SEL_NEXT_PROVIDER_ID }, "latest"]).catch(() => null),
+            rpcCall("eth_blockNumber").catch(() => null),
+          ]);
+
+          if (decResult && decResult !== "0x") {
+            state.usdcDecimals = Number(BigInt(decResult));
+          }
           const safeDecimals = state.usdcDecimals || 6;
 
-          // Get latest block number
-          const latestHex = await rpcCall("eth_blockNumber");
-          const latest = Number(BigInt(latestHex));
-          const from = Math.max(0, latest - LOG_SCAN_BLOCKS);
-
-          // nextProviderId()
           let nextProviderIdVal = 1n;
-          try {
-            const r = await rpcCall("eth_call", [{ to: CONFIG.registry, data: SEL_NEXT_PROVIDER_ID }, "latest"]);
-            if (r && r !== "0x") nextProviderIdVal = BigInt(r);
-          } catch {}
+          if (nextProviderIdRaw && nextProviderIdRaw !== "0x") {
+            nextProviderIdVal = BigInt(nextProviderIdRaw);
+          }
+          // Show provider count IMMEDIATELY — no event scan needed
+          $("heroProviders").textContent = (Number(nextProviderIdVal) - 1).toString();
+
+          if (!latestHex) return;
+          const latest = Number(BigInt(latestHex));
+
+          // --- Phase 2: event scan in background (can take 1-3s) ---
+          // Landing page only needs recent activity, so use a shorter window
+          // to keep initial load fast. Full 100K window kicks in post-connect.
+          const LANDING_SCAN_BLOCKS = 30_000; // ~1 day on Arc, fast enough
+          const from = Math.max(0, latest - LANDING_SCAN_BLOCKS);
 
           // Fetch logs in parallel
           const [startedRaw, receiptRaw, slashedRaw, regRaw] = await Promise.all([
@@ -5912,7 +5922,6 @@ console.log("call opened:", tx.hash);`;
             fetchLogsChunked(CONFIG.registry,   TOPICS.ProviderRegistered, from, latest),
           ]);
 
-          $("heroProviders").textContent = (Number(nextProviderIdVal) - 1).toString();
           $("heroCalls").textContent = startedRaw.length.toString();
           $("heroSlashes").textContent = slashedRaw.length.toString();
 
