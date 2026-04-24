@@ -3039,6 +3039,9 @@
                   <div class="field">
                     <label>Max response (sec) <span class="tip" data-tip="How long you have between a call opening and submitting a signed receipt. Miss this deadline and anyone can claim a timeout against you.">?</span></label>
                     <input type="text" id="regMaxResp" placeholder="120" />
+                    <div class="hint" style="color: var(--text-faint); font-size: 11px; margin-top: 4px;">
+                      Recommended: 60s or more. MetaMask signing takes ~10s — tight SLAs cause receipt failures.
+                    </div>
                   </div>
                   <div class="field">
                     <label>Slash % <span class="tip" data-tip="Percentage of your stake paid to the caller on a timeout. Higher values build trust but raise your risk. 10–30% is typical.">?</span></label>
@@ -5333,8 +5336,15 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           const d = state.usdcDecimals;
           const price = ethers.formatUnits(p.pricePerCall, d);
           const slashPct = Number(p.slashBps) / 100;
-          $("callProviderHint").textContent =
-            `${p.active ? "active" : "INACTIVE"} · price ${price} USDC · SLA ${p.maxResponseTime}s · slash ${slashPct}%`;
+          const slaSeconds = Number(p.maxResponseTime);
+          let slaNote = "";
+          if (slaSeconds <= 30) {
+            slaNote = ` <span style="color: var(--danger); font-weight: 600;">⚠ tight SLA — receipts may fail</span>`;
+          } else if (slaSeconds <= 60) {
+            slaNote = ` <span style="color: var(--warn); font-weight: 600;">⚠ short SLA — be quick</span>`;
+          }
+          $("callProviderHint").innerHTML =
+            `${p.active ? "active" : "INACTIVE"} · price ${price} USDC · SLA ${slaSeconds}s · slash ${slashPct}%${slaNote}`;
           // Populate risk box
           const stakeNum = parseFloat(ethers.formatUnits(p.stake, d));
           const priceNum = parseFloat(price);
