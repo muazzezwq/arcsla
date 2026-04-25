@@ -2992,7 +2992,7 @@
           <div class="stat-cell">
             <div class="stat-label">Calls</div>
             <div class="stat-value mono" id="statCalls">—</div>
-            <div class="stat-sub" id="statCallsSub">recent activity</div>
+            <div class="stat-sub" id="statCallsSub">all-time</div>
           </div>
           <div class="stat-cell">
             <div class="stat-label">Receipts</div>
@@ -4004,23 +4004,24 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
       // -------- Network stats (on-chain aggregate) --------
       async function refreshNetworkStats() {
         try {
-          // Providers count comes directly from contract state (survives chain age).
-          // Calls/receipts/slashes still use event scan since the contract doesn't
-          // expose counters for those (would cost storage gas per tx).
-          const [nextId, startedLogs, receiptLogs, slashedLogs] = await Promise.all([
+          // Providers and total calls come from contract state (cumulative, all-time).
+          // Receipts/slashes still use event scan ("recent activity" only) since the
+          // contract doesn't expose counters for those (would cost storage gas per tx).
+          const [nextId, totalCallsBN, receiptLogs, slashedLogs] = await Promise.all([
             state.registry.nextProviderId().catch(() => 1n),
-            safeQuery(state.payPerCall, "CallStarted"),
+            state.payPerCall.nonce().catch(() => 0n),
             safeQuery(state.payPerCall, "ReceiptSubmitted"),
             safeQuery(state.payPerCall, "CallSlashed"),
           ]);
 
           const providersCount = Math.max(0, Number(nextId) - 1);
+          const totalCalls = Number(totalCallsBN);
 
           state.networkStats = {
             providers: providersCount,
-            calls: startedLogs.length,
-            receipts: receiptLogs.length,
-            slashed: slashedLogs.length,
+            calls: totalCalls,                  // cumulative from contract
+            receipts: receiptLogs.length,        // recent only
+            slashed: slashedLogs.length,         // recent only
             slashedAmount: slashedLogs.reduce((acc, l) => acc + (l.args?.slashed ?? 0n), 0n),
           };
 
@@ -4030,12 +4031,39 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
           $("statReceipts").textContent = state.networkStats.receipts.toString();
           $("statSlashed").textContent = ethers.formatUnits(state.networkStats.slashedAmount, d);
 
-          const honorRate = state.networkStats.calls > 0
-            ? Math.round((state.networkStats.receipts / state.networkStats.calls) * 100)
-            : 0;
-          $("statReceiptsSub").textContent = `${honorRate}% honor rate`;
-          updateGauge(honorRate);
-          $("statSlashedSub").textContent = `${state.networkStats.slashed} slash${state.networkStats.slashed === 1 ? "" : "es"}`;
+          // Honor rate: only meaningful when we have receipts in scope.
+          // If no receipts visible but calls exist, show "—" instead of misleading 0%.
+          let honorRate;
+          let honorLabel;
+          if (state.networkStats.receipts === 0 && totalCalls === 0) {
+            honorRate = null;
+            honorLabel = "no activity yet";
+          } else if (state.networkStats.receipts === 0) {
+            // We have calls cumulatively but no receipts in recent window
+            honorRate = null;
+            honorLabel = "no recent receipts";
+          } else {
+            // Calculate honor rate using receipts vs (receipts + slashes) — the
+            // closed calls in our window. This is the meaningful ratio.
+            const closedInWindow = state.networkStats.receipts + state.networkStats.slashed;
+            honorRate = closedInWindow > 0
+              ? Math.round((state.networkStats.receipts / closedInWindow) * 100)
+              : 100;
+            honorLabel = `${honorRate}% honor rate (recent)`;
+          }
+          $("statReceiptsSub").textContent = honorLabel;
+          if (honorRate !== null) {
+            updateGauge(honorRate);
+          } else {
+            // Show neutral/empty gauge
+            updateGauge(0);
+            const val = $("gaugeValue");
+            if (val) {
+              val.textContent = "—";
+              val.style.color = "var(--text-faint)";
+            }
+          }
+          $("statSlashedSub").textContent = `${state.networkStats.slashed} slash${state.networkStats.slashed === 1 ? "" : "es"} (recent)`;
 
           // Also update hero (disconnected view)
           $("heroCalls").textContent = state.networkStats.calls.toString();
@@ -5887,6 +5915,7 @@ console.log("call opened:", tx.hash);`;
       // nextProviderId() selector = keccak256("nextProviderId()")[0:4]
       const SEL_NEXT_PROVIDER_ID = ethers.id("nextProviderId()").slice(0, 10);
       const SEL_DECIMALS          = ethers.id("decimals()").slice(0, 10);
+      const SEL_NONCE             = ethers.id("nonce()").slice(0, 10);
 
       (async () => {
         try {
@@ -5894,12 +5923,13 @@ console.log("call opened:", tx.hash);`;
           const payIface = new ethers.Interface(PAY_ABI);
           const regIface = new ethers.Interface(REGISTRY_ABI);
 
-          // --- Phase 1: immediate data (provider count + USDC decimals) ---
+          // --- Phase 1: immediate data (provider count + total calls + USDC decimals) ---
           // These are single-call reads, return in ~200ms.
           // Update hero stats ASAP so the page doesn't feel like it's loading.
-          const [decResult, nextProviderIdRaw, latestHex] = await Promise.all([
+          const [decResult, nextProviderIdRaw, nonceRaw, latestHex] = await Promise.all([
             rpcCall("eth_call", [{ to: CONFIG.usdc, data: SEL_DECIMALS }, "latest"]).catch(() => null),
             rpcCall("eth_call", [{ to: CONFIG.registry, data: SEL_NEXT_PROVIDER_ID }, "latest"]).catch(() => null),
+            rpcCall("eth_call", [{ to: CONFIG.payPerCall, data: SEL_NONCE }, "latest"]).catch(() => null),
             rpcCall("eth_blockNumber").catch(() => null),
           ]);
 
@@ -5914,6 +5944,12 @@ console.log("call opened:", tx.hash);`;
           }
           // Show provider count IMMEDIATELY — no event scan needed
           $("heroProviders").textContent = (Number(nextProviderIdVal) - 1).toString();
+
+          // Total cumulative calls — read from contract nonce (always accurate, all-time)
+          if (nonceRaw && nonceRaw !== "0x") {
+            const totalCalls = Number(BigInt(nonceRaw));
+            $("heroCalls").textContent = totalCalls.toString();
+          }
 
           if (!latestHex) return;
           const latest = Number(BigInt(latestHex));
@@ -5932,7 +5968,6 @@ console.log("call opened:", tx.hash);`;
             fetchLogsChunked(CONFIG.registry,   TOPICS.ProviderRegistered, from, latest),
           ]);
 
-          $("heroCalls").textContent = startedRaw.length.toString();
           $("heroSlashes").textContent = slashedRaw.length.toString();
 
           // Decode logs and build event list
