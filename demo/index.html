@@ -3431,6 +3431,7 @@ console.<span class="fn">log</span>(<span class="str">"call opened:"</span>, tx.
         "function submitReceipt(bytes32 callId, bytes32 responseHash, bytes signature)",
         "function claimTimeout(bytes32 callId)",
         "function getCall(bytes32) view returns (tuple(uint256 providerId, address caller, uint256 amount, uint32 startedAt, uint32 deadline, bytes32 requestHash, bytes32 responseHash, uint8 status))",
+        "function nonce() view returns (uint256)",
         "event CallStarted(bytes32 indexed callId, uint256 indexed providerId, address indexed caller, uint256 amount, bytes32 requestHash, uint32 deadline)",
         "event ReceiptSubmitted(bytes32 indexed callId, bytes32 responseHash)",
         "event CallSlashed(bytes32 indexed callId, uint256 refunded, uint256 slashed)",
